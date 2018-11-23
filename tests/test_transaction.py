@@ -196,19 +196,29 @@ class TestSymbol(TestCase):
         try:
             self.txn.symbol = test_symbol
             self.fail("An invalid expiration day should have thrown a ValueError")
-        except ValueError as e:
+        except AttributeError as e:
             self.assertTrue(True, e)
 
     def test_bad_option_type(self):
         test_symbol = "-SWKS180119X105.50"
-        self.txn.symbol = test_symbol
-        self.fail("An invalid option type (e.g. CALL/BUY) should have thrown a ValueError")
-    except ValueError as e:
-        self.assertTrue(True, e)
+        try:
+            self.txn.symbol = test_symbol
+            self.fail("An invalid option type (e.g. CALL/BUY) should have thrown a ValueError")
+        except AttributeError as e:
+            self.assertTrue(True, e)
 
     def test_bad_option_strike_price(self):
         test_symbol = "-SWKS180119P105.50x"
-        self.fail("An invalid expiration price should have thrown a ValueError")
-    except ValueError as e:
-        self.assertTrue(True, e)
+        try:
+            self.txn.symbol = test_symbol
+            self.fail("An invalid expiration price should have thrown a ValueError")
+        except AttributeError as e:
+            self.assertTrue(True, e)
 
+    def test_no_option_strike_price(self):
+        test_symbol = "-SWKS180119Px"
+        try:
+            self.txn.symbol = test_symbol
+            self.fail("An invalid expiration price should have thrown a ValueError")
+        except AttributeError as e:
+            self.assertTrue(True, e)

@@ -126,30 +126,46 @@ class Transaction:
     def symbol(self, new_symbol):
         if new_symbol is None:
            self.__symbol = ""
+           self.__option_type = False
 
         else:
-            matches = re.search("-([A-Z]*)(\d{2})(\d{2})(\d{2})([CP])(\d*\.?\d*)", new_symbol)
+            matches = re.search("-(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[CP])(?P<strike_price>\d*\.?\d*)", new_symbol)
 
             if matches is None:
                 self.__symbol = new_symbol
+                self.__option_type = False
+
             else:
                 self.__is_option = True
                 self.__option_symbol = new_symbol[1:]
-                self.__symbol = matches.group(1)
-                exp_yr = int('20' + matches.group(2))
-                exp_mo = int(matches.group(3))
-                exp_day = int(matches.group(4))
+
+                underlying_symbol = matches.group('symbol')
+                if underlying_symbol == '':
+                    raise AttributeError('The underlying symbol was not found in the option symbol')
+                else:
+                    self.__symbol = underlying_symbol
+
+                exp_yr = int('20' + matches.group('exp_year'))
+                exp_mo = int(matches.group('exp_mon'))
+                exp_day = int(matches.group('exp_day'))
                 try:
                     exp_date = date(exp_yr, exp_mo, exp_day)
                 except ValueError as e:
-                    raise ValueError("Invalid expiration date: {}".format(e))
+                    raise AttributeError("Invalid expiration date: {}".format(e))
                 self.__option_expiration_date = exp_date
-                opt_type = matches.group(5)
+
+                opt_type = matches.group('opt_type')
                 if (opt_type == Transaction.CALL) or (opt_type == Transaction.PUT):
-                    self.__option_type = matches.group(5)
+                    self.__option_type = opt_type
                 else:
-                    raise ValueError("An option type must be a CALL (C) or a PUT (P)")
-                self.__option_strike_price = float(matches.group(6))
+                    raise AttributeError("An option type must be a 'C' (CALL) or a 'P' (PUT)")
+
+                price = matches.group('strike_price')
+                if price == '':
+                    raise AttributeError("Invalid or missing option price {}".format(price))
+                else:
+                    self.__option_strike_price = float(price)
+
 
     @property
     def is_option(self):
