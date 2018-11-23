@@ -1,5 +1,6 @@
 from unittest import TestCase
 from Transaction import Transaction
+from datetime import date
 
 class TestTransaction(TestCase):
     def setUp(self):
@@ -145,4 +146,69 @@ class TestAction(TestTransaction):
             self.txn.action = test_action
             self.failIfEqual(self.txn.action, test_action)
         except ValueError as e:
-            self.assertEqual(self.txn.action, "")
+            self.assertEqual(self.txn.action, Transaction.NONE)
+
+class TestIsOption(TestCase):
+    def setUp(self):
+        self.txn = Transaction()
+
+    def test_no_symbol(self):
+        self.txn.symbol = None
+        self.assertFalse(self.txn.is_option)
+
+    def test_regular_txn(self):
+        test_symbol = 'SWKS'
+        self.txn.symbol = test_symbol
+        self.assertFalse(self.txn.is_option)
+
+    def test_option_txn(self):
+        test_symbol = "-SWKS180119P105"
+        self.txn.symbol = test_symbol
+        self.assertTrue(self.txn.is_option)
+
+
+class TestSymbol(TestCase):
+    def setUp(self):
+        self.txn = Transaction()
+
+    def test_no_symbol(self):
+        self.txn.symbol = None
+        self.assertFalse(self.txn.symbol, "")
+
+    def test_regular_txn(self):
+        test_symbol = 'SWKS'
+        self.txn.symbol = test_symbol
+        self.assertEqual(self.txn.symbol, test_symbol)
+        self.assertFalse(self.txn.is_option)
+
+    def test_option_txn(self):
+        test_symbol = "-SWKS180119P105.50"
+        self.txn.symbol = test_symbol
+        self.assertEqual(self.txn.symbol, 'SWKS')
+        self.assertTrue(self.txn.is_option)
+        self.assertEqual(self.txn.option_symbol, test_symbol[1:])
+        self.assertEqual(self.txn.option_type, Transaction.PUT)
+        self.assertEqual(self.txn.option_expiration_date, date(2018, 1, 19))
+        self.assertEqual(self.txn.option_strike_price, 105.50)
+
+    def test_bad_option_expiration_date(self):
+        test_symbol = "-SWKS180132P105.50"
+        try:
+            self.txn.symbol = test_symbol
+            self.fail("An invalid expiration day should have thrown a ValueError")
+        except ValueError as e:
+            self.assertTrue(True, e)
+
+    def test_bad_option_type(self):
+        test_symbol = "-SWKS180119X105.50"
+        self.txn.symbol = test_symbol
+        self.fail("An invalid option type (e.g. CALL/BUY) should have thrown a ValueError")
+    except ValueError as e:
+        self.assertTrue(True, e)
+
+    def test_bad_option_strike_price(self):
+        test_symbol = "-SWKS180119P105.50x"
+        self.fail("An invalid expiration price should have thrown a ValueError")
+    except ValueError as e:
+        self.assertTrue(True, e)
+

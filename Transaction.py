@@ -1,15 +1,29 @@
+import re
+from datetime import date
+
 class Transaction:
 
     BUY = 1
     SELL = -1
     NONE = 0
 
+    CALL = "C"
+    PUT = "P"
+
     # Step #1 for a Class - always create an __init__ method
     def __init__(self):
+        self.id = ""
+
         self.symbol = ""
         self.description = ""
         self.date = ""
         self.settlement_date = ""
+
+        self.__is_option = False
+        self.__option_type = None
+        self.__option_symbol = ""
+        self.__option_strike_price = 0.00
+        self.__option_expiration_date = ""
 
         self.action = Transaction.NONE
 
@@ -103,6 +117,64 @@ class Transaction:
             raise ValueError("The total price for the transaction must be greater than zero.")
         else:
             self.__amount = amount
+
+    @property
+    def symbol(self):
+       return self.__symbol
+
+    @symbol.setter
+    def symbol(self, new_symbol):
+        if new_symbol is None:
+           self.__symbol = ""
+
+        else:
+            matches = re.search("-([A-Z]*)(\d{2})(\d{2})(\d{2})([CP])(\d*\.?\d*)", new_symbol)
+
+            if matches is None:
+                self.__symbol = new_symbol
+            else:
+                self.__is_option = True
+                self.__option_symbol = new_symbol[1:]
+                self.__symbol = matches.group(1)
+                exp_yr = int('20' + matches.group(2))
+                exp_mo = int(matches.group(3))
+                exp_day = int(matches.group(4))
+                try:
+                    exp_date = date(exp_yr, exp_mo, exp_day)
+                except ValueError as e:
+                    raise ValueError("Invalid expiration date: {}".format(e))
+                self.__option_expiration_date = exp_date
+                opt_type = matches.group(5)
+                if (opt_type == Transaction.CALL) or (opt_type == Transaction.PUT):
+                    self.__option_type = matches.group(5)
+                else:
+                    raise ValueError("An option type must be a CALL (C) or a PUT (P)")
+                self.__option_strike_price = float(matches.group(6))
+
+    @property
+    def is_option(self):
+        return self.__is_option
+
+    @is_option.setter
+    def is_option(self, option):
+        raise ValueError("is_option flag is read only")
+
+    @property
+    def option_type(self):
+        return self.__option_type
+
+    @property
+    def option_symbol(self):
+        return self.__option_symbol
+
+    @property
+    def option_expiration_date(self):
+        return self.__option_expiration_date
+
+    @property
+    def option_strike_price(self):
+        return self.__option_strike_price
+
 
 if __name__ == "__main__":
     txn = Transaction()
