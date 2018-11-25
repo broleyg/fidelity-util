@@ -129,9 +129,12 @@ class Transaction:
            self.__option_type = False
 
         else:
-            matches = re.search("-(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[CP])(?P<strike_price>\d*\.?\d*)", new_symbol)
+            matches = re.search("-(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
 
             if matches is None:
+                if new_symbol[0:1] == '-':
+                    raise AttributeError('Invalid option symbol {}'.format(new_symbol))
+            else:
                 self.__symbol = new_symbol
                 self.__option_type = False
 
