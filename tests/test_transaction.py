@@ -208,7 +208,7 @@ class TestSymbol(TestCase):
             self.assertTrue(True, e)
 
     def test_bad_option_strike_price(self):
-        test_symbol = "-SWKS180119P105x50"
+        test_symbol = "-SWKS180119Px105.50"
         try:
             self.txn.symbol = test_symbol
             self.fail("An invalid expiration price should have thrown a ValueError, not {}".format(self.txn.option_strike_price))
@@ -220,5 +220,13 @@ class TestSymbol(TestCase):
         try:
             self.txn.symbol = test_symbol
             self.fail("An invalid expiration price should have thrown a ValueError")
+        except AttributeError as e:
+            self.assertTrue(True, e)
+
+    def test_no_option_symbol(self):
+        test_symbol = "-180119P105.50"
+        try:
+            self.txn.symbol = test_symbol
+            self.fail("An invalid underlying stock symbol should have thrown a ValueError")
         except AttributeError as e:
             self.assertTrue(True, e)

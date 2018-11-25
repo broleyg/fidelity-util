@@ -124,50 +124,63 @@ class Transaction:
 
     @symbol.setter
     def symbol(self, new_symbol):
+
+        # First, ensure that we have a value provided, to avoid all the costly regular expression searching
         if new_symbol is None:
-           self.__symbol = ""
-           self.__option_type = False
+           self.__symbol = ''
+           self.__option_symbol == ''
+           self.__is_option = False
 
+        # .. so now that we know have a value ...
         else:
-            matches = re.search("-(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
 
-            if matches is None:
-                if new_symbol[0:1] == '-':
-                    raise AttributeError('Invalid option symbol {}'.format(new_symbol))
-            else:
-                self.__symbol = new_symbol
-                self.__option_type = False
+            # Lets check and see if it's an option symbol, which has the following format
+            #
+            #  -SWKS180132P105.50
+            match = re.search("(?P<option_flag>\-)(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
 
-            else:
-                self.__is_option = True
-                self.__option_symbol = new_symbol[1:]
+            if match:
 
-                underlying_symbol = matches.group('symbol')
+                self.__is_option = (match.group('option_flag') == '-')
+
+                underlying_symbol = match.group('symbol')
                 if underlying_symbol == '':
                     raise AttributeError('The underlying symbol was not found in the option symbol')
                 else:
                     self.__symbol = underlying_symbol
+                self.__option_symbol = new_symbol[1:]
 
-                exp_yr = int('20' + matches.group('exp_year'))
-                exp_mo = int(matches.group('exp_mon'))
-                exp_day = int(matches.group('exp_day'))
+
+                exp_yr = int('20' + match.group('exp_year'))
+                exp_mo = int(match.group('exp_mon'))
+                exp_day = int(match.group('exp_day'))
                 try:
                     exp_date = date(exp_yr, exp_mo, exp_day)
                 except ValueError as e:
                     raise AttributeError("Invalid expiration date: {}".format(e))
                 self.__option_expiration_date = exp_date
 
-                opt_type = matches.group('opt_type')
+                opt_type = match.group('opt_type')
                 if (opt_type == Transaction.CALL) or (opt_type == Transaction.PUT):
                     self.__option_type = opt_type
                 else:
                     raise AttributeError("An option type must be a 'C' (CALL) or a 'P' (PUT)")
 
-                price = matches.group('strike_price')
+                price = match.group('strike_price')
                 if price == '':
                     raise AttributeError("Invalid or missing option price {}".format(price))
                 else:
                     self.__option_strike_price = float(price)
+
+            else:
+
+                if new_symbol[0:1] == '-':
+                    raise AttributeError('Invalid option symbol {}'.format(new_symbol))
+
+                else:
+                    self.__symbol = new_symbol
+                    self.__option_symbol = ''
+                    self.__is_option = False
 
 
     @property
