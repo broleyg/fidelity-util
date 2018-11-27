@@ -1,6 +1,7 @@
 import re
 from datetime import date
 import locale
+import json
 
 class Transaction:
 
@@ -38,7 +39,15 @@ class Transaction:
         self.__amount = 0.00
 
     def __str__(self):
-        return "<{} {} {} {} @ {} (minus {} and {}) = {} ".format(self.date, self.action, self.symbol, self.shares, self.price, self.fees, self.commission, self.amount)
+        rep = {}
+        for key, value in self.__dict__.items():
+            if key[:1] == '_':
+                attr = key[14:]
+            else:
+                attr = key
+            rep[attr] = value
+        return json.dumps(rep, indent=4, sort_keys=True, default=str)
+        #return "<{} {} {} {} @ {} (minus {} and {}) = {} ".format(self.date, self.action, self.symbol, self.shares, self.price, self.fees, self.commission, self.amount)
 
     # Handy article to show how to use private variables w getters and setters
     # https://www.python-course.eu/python3_properties.php

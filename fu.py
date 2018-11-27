@@ -87,8 +87,8 @@ def export_json(conten):
     return
 
 def main():
-    import_csv('data/example-transactions.csv')
-    #import_csv('data/2016-roth-txns.csv')
+    #import_csv('data/example-transactions.csv')
+    import_csv('data/2016-roth-txns.csv')
     return
 
 if (__name__ == "__main__"):
