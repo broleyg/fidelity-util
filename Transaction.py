@@ -1,11 +1,12 @@
 import re
 from datetime import date
+import locale
 
 class Transaction:
 
-    BUY = 1
-    SELL = -1
-    NONE = 0
+    BUY = "BUY"
+    SELL = "SELL"
+    NONE = "NONE"
 
     CALL = "C"
     PUT = "P"
@@ -18,7 +19,7 @@ class Transaction:
         self.description = ""
         self.date = ""
         self.settlement_date = ""
-
+        self.funds_type = ''
         self.__is_option = False
         self.__option_type = None
         self.__option_symbol = ""
@@ -34,10 +35,10 @@ class Transaction:
         self.price = 0.00
         self.commission = 0.00
         self.fees = 0.00
-        self.amount = 0.00
+        self.__amount = 0.00
 
     def __str__(self):
-        return "transaction: {} {} {} {} {}".format(self.date, self.action, self.symbol, self.amount, self.price)
+        return "<{} {} {} {} @ {} (minus {} and {}) = {} ".format(self.date, self.action, self.symbol, self.shares, self.price, self.fees, self.commission, self.amount)
 
     # Handy article to show how to use private variables w getters and setters
     # https://www.python-course.eu/python3_properties.php
@@ -48,15 +49,19 @@ class Transaction:
 
     @action.setter
     def action(self, action):
-        if action == Transaction.NONE:
-            self.__action = Transaction.NONE
-        elif action == Transaction.SELL:
-            self.__action = Transaction.SELL
-        elif action == Transaction.BUY:
+
+        match = re.search(r"(BUY|BOUGHT)", action)
+        if match:
             self.__action = Transaction.BUY
-        else:
-            self.__action = Transaction.NONE
-            raise ValueError("A transaction action must be either Buy or Sell.")
+            return
+
+        match = re.search(r"(SELL|SOLD)", action)
+        if match:
+            self.__action = Transaction.SELL
+            return
+
+        self.__action = action
+        #self.__action = Transaction.NONE
 
     @property
     def shares(self):
@@ -64,11 +69,27 @@ class Transaction:
 
     @shares.setter
     def shares(self, shares):
-        if shares < 0:
-            self.__shares = 0
-            raise ValueError("The number of shares for a transaction must be greater than zero.")
-        else:
-            self.__shares = shares
+        try:
+            value = float(self.__currency_value(shares))
+        except ValueError as e:
+            if shares == '':
+                value = 0.00
+            else:
+                raise ValueError("Inavlid shares {}".format(shares))
+
+        self.__shares = value
+
+
+    def __currency_value(self, value):
+        if isinstance(value, str):
+            locale.setlocale(locale.LC_ALL, '')
+            conv = locale.localeconv()
+            no_currency = value.replace(conv['currency_symbol'], '')
+            raw_numbers = no_currency.replace(conv['thousands_sep'], '')
+            return raw_numbers
+
+        return value
+
 
     @property
     def price(self):
@@ -76,11 +97,20 @@ class Transaction:
 
     @price.setter
     def price(self, price):
-        if price < 0:
-            self.__price = 0
-            raise ValueError("The price paid per share for a transaction must be greater than zero.")
-        else:
-            self.__price = price
+        try:
+            value = float(self.__currency_value(price))
+        except ValueError as e:
+            if price == '':
+                value = 0.00
+            else:
+                raise ValueError("Invalid price {}".format(price))
+
+        self.__price = value
+        #if value < 0:
+        #    self.__price = 0
+        #    raise ValueError("The price paid per share for a transaction must be greater than zero.")
+        #else:
+        #    self.__price = value
 
     @property
     def fees(self):
@@ -88,11 +118,19 @@ class Transaction:
 
     @fees.setter
     def fees(self, fees):
-        if fees < 0:
+        try:
+            value = float(self.__currency_value(fees))
+        except ValueError as e:
+            if fees == '':
+                value = 0.0
+            else:
+                raise ValueError("Invalid fees {}".format(fees))
+
+        if value < 0:
             self.__fees = 0
             raise ValueError("Any fees for the transaction must be greater than zero.")
         else:
-            self.__fees = fees
+            self.__fees = value
 
     @property
     def commission(self):
@@ -100,11 +138,19 @@ class Transaction:
 
     @commission.setter
     def commission(self, commission):
-        if commission < 0:
+        try:
+            value = float(self.__currency_value(commission))
+        except ValueError as e:
+            if commission == '':
+                value = 0.0
+            else:
+                raise ValueError("Invalid commission {}".format(commission))
+
+        if value < 0:
             self.__commission = 0
             raise ValueError("Any commission for the transaction must be greater than zero.")
         else:
-            self.__commission = commission
+            self.__commission = value
 
     @property
     def amount(self):
@@ -112,11 +158,21 @@ class Transaction:
 
     @amount.setter
     def amount(self, amount):
-        if amount < 0:
-            self.__amount = 0
-            raise ValueError("The total price for the transaction must be greater than zero.")
-        else:
-            self.__amount = amount
+        try:
+            value = float(self.__currency_value(amount))
+        except ValueError as e:
+            if amount == '':
+                value = 0.0
+            else:
+                raise ValueError("Invalid amount {}".format(amount))
+
+        self.__amount = value
+
+        #if value < 0:
+        #    self.__amount = 0
+        #    raise ValueError("The total price for the transaction must be greater than zero.")
+        #else:
+        #    self.__amount = value
 
     @property
     def symbol(self):
