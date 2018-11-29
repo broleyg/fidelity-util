@@ -29,7 +29,7 @@ def parse_row(map, web_format, row):
         txn.fees = row[map['Fees']]
         txn.amount = row[map['Amount']]
     #txn.interest = row[map['Accrued Interest ($)']]
-    #print (txn)
+    print (txn)
     return txn
 
 
