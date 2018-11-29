@@ -8,7 +8,7 @@ class TestAccount(TestCase):
         act = Account()
 
 
-class TestInit(TestCase):
+class TestInit(TestAccount):
     def test_initial_id(self):
         self.assertEqual(self.act.id, "")
 
@@ -19,7 +19,7 @@ class TestInit(TestCase):
         self.assertEqual(self.act.transactions.count, 0)
 
 
-class TestId(TestCase):
+class TestId(TestAccount):
     def test_id(self):
         test_id = "IRA"
         self.act.id = test_id

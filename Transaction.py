@@ -1,5 +1,5 @@
 import re
-from datetime import date
+import datetime
 import locale
 import json
 
@@ -12,14 +12,18 @@ class Transaction:
     CALL = "C"
     PUT = "P"
 
+    locale.setlocale(locale.LC_ALL, '')
+    __conv = locale.localeconv()
+
     # Step #1 for a Class - always create an __init__ method
     def __init__(self):
+
         self.id = ""
 
         self.symbol = ""
         self.description = ""
-        self.date = ""
-        self.settlement_date = ""
+        self.__date = ""
+        self.__settlement_date = ""
         self.funds_type = ''
         self.__is_option = False
         self.__option_type = None
@@ -47,10 +51,44 @@ class Transaction:
                 attr = key
             rep[attr] = value
         return json.dumps(rep, indent=4, sort_keys=True, default=str)
-        #return "<{} {} {} {} @ {} (minus {} and {}) = {} ".format(self.date, self.action, self.symbol, self.shares, self.price, self.fees, self.commission, self.amount)
+
+    def __currency_value(self, value):
+        if isinstance(value, str):
+            no_currency = value.replace(self.__conv['currency_symbol'], '')
+            raw_numbers = no_currency.replace(self.__conv['thousands_sep'], '')
+            return raw_numbers
+        else:
+            return value
+
+    def __date_value(self, value):
+        if isinstance(value, str) and (value.strip() != ''):
+            format = locale.nl_langinfo(locale.D_FMT)
+            date_value = datetime.datetime.strptime(value.strip(), format).date()
+            return date_value
+        elif isinstance(value, datetime.date):
+            return value
+        else:
+            return None
+
 
     # Handy article to show how to use private variables w getters and setters
     # https://www.python-course.eu/python3_properties.php
+
+    @property
+    def date(self):
+        return self.__date
+
+    @date.setter
+    def date(self, date):
+        self.__date = self.__date_value(date)
+
+    @property
+    def settlement_date(self):
+        return self.__settlement_date
+
+    @settlement_date.setter
+    def settlement_date(self, settlement_date):
+        self.__settlement_date = self.__date_value(settlement_date)
 
     @property
     def action(self):
@@ -87,18 +125,6 @@ class Transaction:
                 raise ValueError("Inavlid shares {}".format(shares))
 
         self.__shares = value
-
-
-    def __currency_value(self, value):
-        if isinstance(value, str):
-            locale.setlocale(locale.LC_ALL, '')
-            conv = locale.localeconv()
-            no_currency = value.replace(conv['currency_symbol'], '')
-            raw_numbers = no_currency.replace(conv['thousands_sep'], '')
-            return raw_numbers
-
-        return value
-
 
     @property
     def price(self):
@@ -202,7 +228,7 @@ class Transaction:
             # Lets check and see if it's an option symbol, which has the following format
             #
             #  -SWKS180132P105.50
-            match = re.search("(?P<option_flag>\-)(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
+            match = re.search("(?P<option_flag>\-?)(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
 
             if match:
 
@@ -220,7 +246,9 @@ class Transaction:
                 exp_mo = int(match.group('exp_mon'))
                 exp_day = int(match.group('exp_day'))
                 try:
-                    exp_date = date(exp_yr, exp_mo, exp_day)
+                    #exp_date = datetime.date(exp_yr, exp_mo, exp_day)
+                    str_date = '{}/{}/20{}'.format(match.group('exp_mon'), match.group('exp_day'), match.group('exp_year'))
+                    exp_date = self.__date_value(str_date)
                 except ValueError as e:
                     raise AttributeError("Invalid expiration date: {}".format(e))
                 self.__option_expiration_date = exp_date

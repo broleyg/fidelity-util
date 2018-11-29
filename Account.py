@@ -1,22 +1,23 @@
 from Transaction import Transaction
+import json
 
 class Account:
 
     def __init__(self):
         self.id
         self.balance = 0
+        self.positions = {}
         self.transactions = []
 
     def __str__(self):
-        return "account: {} balance={} transactions= {}".format(self.id, self.balance, self.transactions.count())
-
-    @property
-    def id(self):
-        return self.__id
-
-    @id.setter
-    def id(self, id):
-       self.__id = id
+        rep = {}
+        for key, value in self.__dict__.items():
+            if key[:1] == '_':
+                attr = key[14:]
+            else:
+                attr = key
+            rep[attr] = value
+        return json.dumps(rep, indent=4, sort_keys=True, default=str)
 
     @property
     def transactions(self):
