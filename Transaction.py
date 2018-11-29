@@ -3,14 +3,13 @@ import datetime
 import locale
 import json
 
-class Transaction:
+from Position import Position
+
+class Transaction(Position):
 
     BUY = "BUY"
     SELL = "SELL"
     NONE = "NONE"
-
-    CALL = "C"
-    PUT = "P"
 
     locale.setlocale(locale.LC_ALL, '')
     __conv = locale.localeconv()
@@ -19,24 +18,10 @@ class Transaction:
     def __init__(self):
 
         self.id = ""
-
-        self.symbol = ""
-        self.description = ""
+        self.action = Transaction.NONE
         self.__date = ""
         self.__settlement_date = ""
         self.funds_type = ''
-        self.__is_option = False
-        self.__option_type = None
-        self.__option_symbol = ""
-        self.__option_strike_price = 0.00
-        self.__option_expiration_date = ""
-
-        self.action = Transaction.NONE
-
-        # The following  member variables need specialized setters
-        # to enforce positive number only rules, and they all can
-        # be fractional
-        self.shares = 0
         self.price = 0.00
         self.commission = 0.00
         self.fees = 0.00
@@ -45,8 +30,9 @@ class Transaction:
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
-            if key[:1] == '_':
-                attr = key[14:]
+            pos = key.rfind('_')
+            if pos > 0:
+                attr = key[pos+1:]
             else:
                 attr = key
             rep[attr] = value
@@ -110,21 +96,6 @@ class Transaction:
         self.__action = action
         #self.__action = Transaction.NONE
 
-    @property
-    def shares(self):
-        return self.__shares
-
-    @shares.setter
-    def shares(self, shares):
-        try:
-            value = float(self.__currency_value(shares))
-        except ValueError as e:
-            if shares == '':
-                value = 0.00
-            else:
-                raise ValueError("Inavlid shares {}".format(shares))
-
-        self.__shares = value
 
     @property
     def price(self):
@@ -203,116 +174,21 @@ class Transaction:
 
         self.__amount = value
 
-        #if value < 0:
-        #    self.__amount = 0
-        #    raise ValueError("The total price for the transaction must be greater than zero.")
-        #else:
-        #    self.__amount = value
-
-    @property
-    def symbol(self):
-       return self.__symbol
-
-    @symbol.setter
-    def symbol(self, new_symbol):
-
-        # First, ensure that we have a value provided, to avoid all the costly regular expression searching
-        if new_symbol is None:
-           self.__symbol = ''
-           self.__option_symbol == ''
-           self.__is_option = False
-
-        # .. so now that we know have a value ...
-        else:
-
-            # Lets check and see if it's an option symbol, which has the following format
-            #
-            #  -SWKS180132P105.50
-            match = re.search("(?P<option_flag>\-?)(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
-
-            if match:
-
-                self.__is_option = (match.group('option_flag') == '-')
-
-                underlying_symbol = match.group('symbol')
-                if underlying_symbol == '':
-                    raise AttributeError('The underlying symbol was not found in the option symbol')
-                else:
-                    self.__symbol = underlying_symbol
-                self.__option_symbol = new_symbol[1:]
-
-
-                exp_yr = int('20' + match.group('exp_year'))
-                exp_mo = int(match.group('exp_mon'))
-                exp_day = int(match.group('exp_day'))
-                try:
-                    #exp_date = datetime.date(exp_yr, exp_mo, exp_day)
-                    str_date = '{}/{}/20{}'.format(match.group('exp_mon'), match.group('exp_day'), match.group('exp_year'))
-                    exp_date = self.__date_value(str_date)
-                except ValueError as e:
-                    raise AttributeError("Invalid expiration date: {}".format(e))
-                self.__option_expiration_date = exp_date
-
-                opt_type = match.group('opt_type')
-                if (opt_type == Transaction.CALL) or (opt_type == Transaction.PUT):
-                    self.__option_type = opt_type
-                else:
-                    raise AttributeError("An option type must be a 'C' (CALL) or a 'P' (PUT)")
-
-                price = match.group('strike_price')
-                if price == '':
-                    raise AttributeError("Invalid or missing option price {}".format(price))
-                else:
-                    self.__option_strike_price = float(price)
-
-            else:
-
-                if new_symbol[0:1] == '-':
-                    raise AttributeError('Invalid option symbol {}'.format(new_symbol))
-
-                else:
-                    self.__symbol = new_symbol
-                    self.__option_symbol = ''
-                    self.__is_option = False
-
-
-    @property
-    def is_option(self):
-        return self.__is_option
-
-    @is_option.setter
-    def is_option(self, option):
-        raise ValueError("is_option flag is read only")
-
-    @property
-    def option_type(self):
-        return self.__option_type
-
-    @property
-    def option_symbol(self):
-        return self.__option_symbol
-
-    @property
-    def option_expiration_date(self):
-        return self.__option_expiration_date
-
-    @property
-    def option_strike_price(self):
-        return self.__option_strike_price
-
 
 if __name__ == "__main__":
     txn = Transaction()
     txn.action = Transaction.SELL
+    txn.date = "11/18/2018"
+
     txn.symbol = "SWKS"
     txn.description = ""
-    txn.date = "Nov 18 2018"
-    txn.settlement_date = "Nov 21 2018"
 
-    txn.shares = 100
+    txn.quantity= 100
     txn.commission = 5.95
     txn.fees = 0.00
     txn.price = 95.25
     txn.amount = 9519.05
+
+    txn.settlement_date = "11/19/2018"
 
     print (txn)

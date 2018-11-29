@@ -21,11 +21,12 @@ class Position:
         self.__option_strike_price = 0.00
         self.__option_expiration_date = ""
 
+
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
             if key[:1] == '_':
-                attr = key[14:]
+                attr = key[11:]
             else:
                 attr = key
             rep[attr] = value

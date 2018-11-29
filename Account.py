@@ -1,19 +1,22 @@
 from Transaction import Transaction
+from Position import Position
 import json
+import copy
 
 class Account:
 
     def __init__(self):
-        self.id
+
+        self.id = ""
         self.balance = 0
-        self.positions = {}
-        self.transactions = []
+        self.__psns = {}
+        self.__txns = []
 
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
             if key[:1] == '_':
-                attr = key[14:]
+                attr = key[10:]
             else:
                 attr = key
             rep[attr] = value
@@ -28,10 +31,25 @@ class Account:
         self.__txns = transactions
 
     def add_transaction(self, txn):
-        if isinstance(txn, "Transaction"):
-            self.__tnxs.append(txn)
+        if isinstance(txn, Transaction):
+            self.transactions.append(txn)
+            self.add_position(txn)
         else:
             raise ValueError("A valid transaction must be provided")
+
+    def add_position(self, pos):
+        if isinstance(pos, Position):
+            if pos.symbol in self.__psns:
+                p = self.__psns[pos.symbol]
+                p.quantity = p.quantity + pos.quantity
+            else:
+                new_pos = Position()
+                new_pos.symbol = pos.symbol
+                new_pos.description = pos.description
+                new_pos.quantity = pos.quantity
+                self.__psns[pos.symbol] = new_pos
+        else:
+            raise ValueError("A valid position must be provided")
 
 if __name__ == "__main__":
     act = Account()

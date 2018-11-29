@@ -1,6 +1,7 @@
 import csv
 import Transaction
-import Account
+
+from Account import Account
 
 def parse_row(map, web_format, row):
 
@@ -9,7 +10,7 @@ def parse_row(map, web_format, row):
 
     txn.symbol = row[map['Symbol']]
     txn.description = row[map['Security Description']]
-    txn.shares = row[map['Quantity']]
+    txn.quantity = row[map['Quantity']]
     txn.settlement_date = row[map['Settlement Date']]
     if web_format:
         txn.date = row[map['Run Date']]
@@ -28,8 +29,7 @@ def parse_row(map, web_format, row):
         txn.fees = row[map['Fees']]
         txn.amount = row[map['Amount']]
     #txn.interest = row[map['Accrued Interest ($)']]
-
-    print (txn)
+    #print (txn)
     return txn
 
 
@@ -42,16 +42,17 @@ def import_csv(file_name):
         # Run Date,Action,Symbol,Security Description,Security Type,Quantity,Price ($),Commission ($),Fees ($),Accrued Interest ($),Amount ($),Settlement Date
         header_read = False
         for row in reader:
-            print (row)
+            #print (row)
             if len(row) >= 12:
                 if header_read:
                     txn = parse_row(map, web_format, row)
-
+                    act.add_transaction(txn)
                 else:
                     map = {field: position for position, field in enumerate(row) }
                     web_format = 'Run Date' in map
                     header_read = True
 
+        print (act)
     return
 
 def convert_line(line):
