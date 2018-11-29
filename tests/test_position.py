@@ -72,9 +72,10 @@ class TestSymbol(TestCase):
     def test_option_pos(self):
         test_symbol = "-SWKS180119P105.50"
         self.pos.symbol = test_symbol
-        self.assertEqual(self.pos.symbol, 'SWKS')
         self.assertTrue(self.pos.is_option)
-        self.assertEqual(self.pos.option_symbol, test_symbol[1:])
+        self.assertEqual(self.pos.symbol, 'SWKS180119P105.50')
+        self.assertEqual(self.pos.underlying_symbol, 'SWKS')
+        self.assertEqual(self.pos.option_symbol, test_symbol)
         self.assertEqual(self.pos.option_type, Position.PUT)
         self.assertEqual(self.pos.option_expiration_date, date(2018, 1, 19))
         self.assertEqual(self.pos.option_strike_price, 105.50)

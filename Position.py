@@ -13,6 +13,7 @@ class Position:
 
     def __init__(self):
         self.symbol = ""
+        self.__underlying_symbol = ""
         self.description = ""
         self.__quantity = 0
         self.__is_option = False
@@ -21,12 +22,12 @@ class Position:
         self.__option_strike_price = 0.00
         self.__option_expiration_date = ""
 
-
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
-            if key[:1] == '_':
-                attr = key[11:]
+            pos = key.rfind('__')
+            if pos > 0:
+                attr = key[pos+2:]
             else:
                 attr = key
             rep[attr] = value
@@ -76,7 +77,8 @@ class Position:
         # First, ensure that we have a value provided, to avoid all the costly regular expression searching
         if new_symbol is None:
            self.__symbol = ''
-           self.__option_symbol == ''
+           self.__option_symbol = ''
+           self.__underlying_symbol = ''
            self.__is_option = False
 
         # .. so now that we know have a value ...
@@ -90,13 +92,14 @@ class Position:
             if match:
 
                 self.__is_option = (match.group('option_flag') == '-')
+                self.__option_symbol = new_symbol
 
                 underlying_symbol = match.group('symbol')
                 if underlying_symbol == '':
                     raise AttributeError('The underlying symbol was not found in the option symbol')
                 else:
-                    self.__symbol = underlying_symbol
-                self.__option_symbol = new_symbol[1:]
+                    self.__symbol = new_symbol[1:]
+                    self.__underlying_symbol = underlying_symbol
 
 
                 exp_yr = int('20' + match.group('exp_year'))
@@ -130,6 +133,7 @@ class Position:
                 else:
                     self.__symbol = new_symbol
                     self.__option_symbol = ''
+                    self.__underlying_symbol = new_symbol
                     self.__is_option = False
 
 
@@ -156,3 +160,7 @@ class Position:
     @property
     def option_strike_price(self):
         return self.__option_strike_price
+
+    @property
+    def underlying_symbol(self):
+        return self.__underlying_symbol

@@ -1,7 +1,7 @@
 from Transaction import Transaction
 from Position import Position
 import json
-import copy
+
 
 class Account:
 
@@ -15,8 +15,9 @@ class Account:
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
-            if key[:1] == '_':
-                attr = key[10:]
+            pos = key.rfind('_')
+            if pos > 0:
+                attr = key[pos+1:]
             else:
                 attr = key
             rep[attr] = value
@@ -30,8 +31,16 @@ class Account:
     def transactions(self, transactions):
         self.__txns = transactions
 
+    @property
+    def positions(self):
+        return self.__psns
+
+    @positions.setter
+    def positions(self, positions):
+        self.__psns = positions
+
     def add_transaction(self, txn):
-        if isinstance(txn, Transaction):
+        if isinstance(txn, Transaction) and (txn.symbol != ''):
             self.transactions.append(txn)
             self.add_position(txn)
         else:
@@ -40,16 +49,25 @@ class Account:
     def add_position(self, pos):
         if isinstance(pos, Position):
             if pos.symbol in self.__psns:
-                p = self.__psns[pos.symbol]
+                p = self.__psns[pos.underlying_symbol]
                 p.quantity = p.quantity + pos.quantity
             else:
                 new_pos = Position()
                 new_pos.symbol = pos.symbol
                 new_pos.description = pos.description
                 new_pos.quantity = pos.quantity
-                self.__psns[pos.symbol] = new_pos
+                self.__psns[pos.underlying_symbol] = new_pos
         else:
             raise ValueError("A valid position must be provided")
+
+
+
+    def get_transactions_for_symbol(self, symbol):
+        txns  = []
+        for txn in self.transactions:
+            if txn.underlying_symbol == symbol:
+                txns.append(txn)
+        return txns
 
 if __name__ == "__main__":
     act = Account()

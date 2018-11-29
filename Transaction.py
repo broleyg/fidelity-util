@@ -30,9 +30,9 @@ class Transaction(Position):
     def __str__(self):
         rep = {}
         for key, value in self.__dict__.items():
-            pos = key.rfind('_')
+            pos = key.rfind('__')
             if pos > 0:
-                attr = key[pos+1:]
+                attr = key[pos+2:]
             else:
                 attr = key
             rep[attr] = value
