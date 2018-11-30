@@ -63,14 +63,15 @@ def export_json(conten):
     return
 
 def main():
-    # import_csv('data/2016-roth-txns.csv')
-    act = import_csv('data/example-transactions.csv')
+    act = import_csv('data/2016-roth-txns.csv')
+    #act = import_csv('data/example-transactions.csv')
 
     for symbol in act.positions:
-        print('{} transactions'.format(symbol))
+        print()
+        print('{} transactions amounting to {}'.format(symbol, act.get_total_amount_for_symbol(symbol)))
         txns = act.get_transactions_for_symbol(symbol)
         for txn in txns:
-            print(txn.date, txn.action, txn.symbol, txn.description, txn.amount)
+            print('\t', txn.date, txn.action, txn.symbol, txn.description, txn.amount)
 
     return
 

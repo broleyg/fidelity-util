@@ -69,6 +69,14 @@ class Account:
                 txns.append(txn)
         return txns
 
+
+    def get_total_amount_for_symbol(self, symbol):
+        total_amount = 0.0
+        txns = self.get_transactions_for_symbol(symbol)
+        for txn in txns:
+            total_amount = total_amount + txn.amount
+        return total_amount
+
 if __name__ == "__main__":
     act = Account()
     act.id = "IRA"
