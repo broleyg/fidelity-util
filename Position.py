@@ -15,6 +15,7 @@ class Position:
         self.symbol = ""
         self.__underlying_symbol = ""
         self.description = ""
+        self.open = True
         self.__quantity = 0
         self.__is_option = False
         self.__option_type = None
@@ -66,6 +67,13 @@ class Position:
                 raise ValueError("Inavlid shares {}".format(new_quantity))
 
         self.__quantity = value
+
+    @property
+    def shares(self):
+        value = self.quantity
+        if self.is_option:
+            value = value *  100
+        return value
 
     @property
     def symbol(self):
@@ -164,3 +172,4 @@ class Position:
     @property
     def underlying_symbol(self):
         return self.__underlying_symbol
+

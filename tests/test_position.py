@@ -119,3 +119,33 @@ class TestSymbol(TestCase):
             self.fail("An invalid underlying stock symbol should have thrown a ValueError")
         except AttributeError as e:
             self.assertTrue(True, e)
+
+class TestShares(TestPosition):
+    def test_non_option_position(self):
+        test_quantity = 3
+        test_symbol = "SWKS"
+        self.pos.quantity = test_quantity
+        self.pos.symbol = test_symbol
+        self.assertEqual(self.pos.shares, test_quantity)
+
+    def test_option_position(self):
+        test_quantity = 3
+        test_symbol = "-SWKS180119P95"
+        self.pos.quantity = test_quantity
+        self.pos.symbol = test_symbol
+        self.assertTrue(self.pos.is_option)
+        self.assertEqual(self.pos.shares, test_quantity * 100)
+
+
+class TestOpen(TestPosition):
+    def test_open(self):
+        test_flag = True
+        self.pos.open = test_flag
+        self.assertEqual(self.pos.open, True)
+
+    def test_closed(self):
+        test_flag = False
+        self.pos.open = test_flag
+        self.assertEqual(self.pos.open, False)
+
+

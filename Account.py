@@ -39,27 +39,45 @@ class Account:
     def positions(self, positions):
         self.__psns = positions
 
+    def add_transactions(self, txns):
+        for txn in txns:
+            try:
+                self.add_transaction(txn)
+            except ValueError as e:
+                print("Fail to add transaction: {}".format(txn))
+
     def add_transaction(self, txn):
         if isinstance(txn, Transaction) and (txn.symbol != ''):
             self.transactions.append(txn)
-            self.add_position(txn)
+            self.add_to_position(txn)
         else:
             raise ValueError("A valid transaction must be provided")
 
-    def add_position(self, pos):
-        if isinstance(pos, Position):
-            if pos.symbol in self.__psns:
-                p = self.__psns[pos.underlying_symbol]
-                p.quantity = p.quantity + pos.quantity
+    def start_position(self, pos):
+        return
+
+    def update_position(self, txn):
+
+        return
+
+    def add_to_position(self, txn):
+        if isinstance(txn, Transaction):
+            if txn.symbol in self.__psns:
+                p = self.__psns[txn.underlying_symbol]
+                if txn.action == Transaction.BUY:
+                    p.quantity = p.quantity + txn.quantity
+                elif txn.action == Transaction.SELL:
+                    p.quantity = p.quantity - txn.quantity
+                    p.open = not (p.quantity == 0)
+
             else:
                 new_pos = Position()
-                new_pos.symbol = pos.symbol
-                new_pos.description = pos.description
-                new_pos.quantity = pos.quantity
-                self.__psns[pos.underlying_symbol] = new_pos
+                new_pos.symbol = txn.symbol
+                #new_pos.description = pos.description
+                new_pos.quantity = txn.quantity
+                self.__psns[txn.underlying_symbol] = new_pos
         else:
             raise ValueError("A valid position must be provided")
-
 
 
     def get_transactions_for_symbol(self, symbol):
@@ -67,6 +85,7 @@ class Account:
         for txn in self.transactions:
             if txn.underlying_symbol == symbol:
                 txns.append(txn)
+        txns.sort(key=lambda x: x.date)
         return txns
 
 

@@ -29,13 +29,12 @@ def parse_row(map, web_format, row):
         txn.fees = row[map['Fees']].strip()
         txn.amount = row[map['Amount']].strip()
     #txn.interest = row[map['Accrued Interest ($)']]
-    print (txn)
+    #print (txn)
     return txn
 
 
 def import_csv(file_name):
-    act = Account()
-
+    txns = []
     with open(file_name, newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
 
@@ -47,14 +46,13 @@ def import_csv(file_name):
                 if header_read:
                     txn = parse_row(map, web_format, row)
                     if (txn.symbol != ''):
-                        act.add_transaction(txn)
+                        txns.append(txn)
                 else:
                     map = {field: position for position, field in enumerate(row) }
                     web_format = 'Run Date' in map
                     header_read = True
+    return txns
 
-        #print (act)
-    return act
 
 def convert_line(line):
     return
@@ -63,15 +61,26 @@ def export_json(conten):
     return
 
 def main():
-    act = import_csv('data/2016-roth-txns.csv')
+    act = Account()
+
     #act = import_csv('data/example-transactions.csv')
+    txns = import_csv('data/2014-roth-txns.csv')
+    act.add_transactions(txns)
+    txns = import_csv('data/2015-roth-txns.csv')
+    act.add_transactions(txns)
+    txns = import_csv('data/2016-roth-txns.csv')
+    act.add_transactions(txns)
+    txns = import_csv('data/2017-roth-txns.csv')
+    act.add_transactions(txns)
+    txns = import_csv('data/2018-roth-txns.csv')
+    act.add_transactions(txns)
 
     for symbol in act.positions:
         print()
         print('{} transactions amounting to {}'.format(symbol, act.get_total_amount_for_symbol(symbol)))
         txns = act.get_transactions_for_symbol(symbol)
         for txn in txns:
-            print('\t', txn.date, txn.action, txn.symbol, txn.description, txn.amount)
+            print('\t{0} - {1:<18} {2:,.2f} {3}'.format(txn.date, txn.symbol,  txn.amount, txn.action))
 
     return
 
