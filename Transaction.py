@@ -1,22 +1,18 @@
 import re
-import datetime
-import locale
-import json
 
-from Position import Position
+from Security import Security
 
-class Transaction(Position):
+class Transaction(Security):
 
-    BUY = "BUY"
-    SELL = "SELL"
-    NONE = "NONE"
-
-    locale.setlocale(locale.LC_ALL, '')
-    __conv = locale.localeconv()
+    BUY = 'BUY'
+    SELL = 'SELL'
+    EXPIRED = 'EXPRIED'
+    ASSIGNED = 'ASSIGNED'
+    NONE = 'NONE'
 
     # Step #1 for a Class - always create an __init__ method
     def __init__(self):
-
+        super().__init__()
         self.id = ""
         self.action = Transaction.NONE
         self.__date = ""
@@ -27,36 +23,6 @@ class Transaction(Position):
         self.fees = 0.00
         self.__amount = 0.00
 
-    def __str__(self):
-        rep = {}
-        for key, value in self.__dict__.items():
-            pos = key.rfind('__')
-            if pos > 0:
-                attr = key[pos+2:]
-            else:
-                attr = key
-            rep[attr] = value
-        return json.dumps(rep, indent=4, sort_keys=True, default=str)
-
-    def __currency_value(self, value):
-        if isinstance(value, str):
-            no_currency = value.replace(self.__conv['currency_symbol'], '')
-            raw_numbers = no_currency.replace(self.__conv['thousands_sep'], '')
-            return raw_numbers
-        else:
-            return value
-
-    def __date_value(self, value):
-        if isinstance(value, str) and (value.strip() != ''):
-            format = locale.nl_langinfo(locale.D_FMT)
-            date_value = datetime.datetime.strptime(value.strip(), format).date()
-            return date_value
-        elif isinstance(value, datetime.date):
-            return value
-        else:
-            return None
-
-
     # Handy article to show how to use private variables w getters and setters
     # https://www.python-course.eu/python3_properties.php
 
@@ -66,7 +32,7 @@ class Transaction(Position):
 
     @date.setter
     def date(self, date):
-        self.__date = self.__date_value(date)
+        self.__date = Transaction.date_value(date)
 
     @property
     def settlement_date(self):
@@ -74,26 +40,38 @@ class Transaction(Position):
 
     @settlement_date.setter
     def settlement_date(self, settlement_date):
-        self.__settlement_date = self.__date_value(settlement_date)
+        self.__settlement_date = Transaction.date_value(settlement_date)
 
     @property
     def action(self):
         return self.__action
 
     @action.setter
-    def action(self, action):
+    def action(self, new_action):
+        new_action = new_action.upper()
 
-        match = re.search(r"(BUY|BOUGHT)", action)
+        match = re.search(r"(BUY|BOUGHT)", new_action)
         if match:
             self.__action = Transaction.BUY
             return
 
-        match = re.search(r"(SELL|SOLD)", action)
+        match = re.search(r"(SELL|SOLD)", new_action)
         if match:
             self.__action = Transaction.SELL
             return
 
-        self.__action = action
+        match = re.search(r"(EXPIRE)", new_action)
+        if match:
+            self.__action = Transaction.EXPIRED
+            return
+
+        match = re.search(r"(ASSIGN)", new_action)
+        if match:
+            self.__action = Transaction.ASSIGNED
+            return
+
+
+        self.__action = new_action
         #self.__action = Transaction.NONE
 
 
@@ -104,7 +82,7 @@ class Transaction(Position):
     @price.setter
     def price(self, price):
         try:
-            value = float(self.__currency_value(price))
+            value = float(Transaction.currency_value(price))
         except ValueError as e:
             if price == '':
                 value = 0.00
@@ -125,7 +103,7 @@ class Transaction(Position):
     @fees.setter
     def fees(self, fees):
         try:
-            value = float(self.__currency_value(fees))
+            value = float(Transaction.currency_value(fees))
         except ValueError as e:
             if fees == '':
                 value = 0.0
@@ -145,7 +123,7 @@ class Transaction(Position):
     @commission.setter
     def commission(self, commission):
         try:
-            value = float(self.__currency_value(commission))
+            value = float(Transaction.currency_value(commission))
         except ValueError as e:
             if commission == '':
                 value = 0.0
@@ -165,7 +143,7 @@ class Transaction(Position):
     @amount.setter
     def amount(self, amount):
         try:
-            value = float(self.__currency_value(amount))
+            value = float(Transaction.currency_value(amount))
         except ValueError as e:
             if amount == '':
                 value = 0.0

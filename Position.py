@@ -1,175 +1,166 @@
 import json
 import re
-import datetime
-import locale
+from datetime import date
 
-class Position:
+from Security import Security
+from Transaction import Transaction
 
-    CALL = 'C'
-    PUT ='P'
-
-    locale.setlocale(locale.LC_ALL, '')
-    __conv = locale.localeconv()
+class Position(Security):
 
     def __init__(self):
-        self.symbol = ""
-        self.__underlying_symbol = ""
-        self.description = ""
-        self.open = True
-        self.__quantity = 0
-        self.__is_option = False
-        self.__option_type = None
-        self.__option_symbol = ""
-        self.__option_strike_price = 0.00
-        self.__option_expiration_date = ""
+        super().__init__()
+        self.transactions = []
+        self.__reset_calculated_fields()
 
-    def __str__(self):
-        rep = {}
-        for key, value in self.__dict__.items():
-            pos = key.rfind('__')
-            if pos > 0:
-                attr = key[pos+2:]
+
+    def __reset_calculated_fields(self):
+        self.__is_open = True
+        self.__open_date = None
+        self.__close_date = None
+        self.__valid_date_range = False
+        self.__position_length = 0
+        self.__amount = 0.0
+
+    def ___validate_date_range(self):
+        self.__valid_date_range = False
+
+        if self.__open_date is None and self.__close_date is None:
+            self.__valid_date_range = False
+
+        elif self.__open_date is None and self.__close_date is not None:
+            self.__valid_date_range = False
+#            if self.__close_date > date.today():
+#                raise ValueError('Invalid date range: open date is None and close date {} is in the future'.format(self.__close_date))
+
+        elif self.__open_date is not None and self.__close_date is None:
+            self.__valid_date_range = False
+#            if self.__open_date > date.today():
+#                raise ValueError('Invalid date range: open date {} is in the future and close date is None'.format(self.__open_date))
+        else:
+            if self.__close_date >= self.__open_date:
+                self.__valid_date_range = True
             else:
-                attr = key
-            rep[attr] = value
-        return json.dumps(rep, indent=4, sort_keys=True, default=str)
+                self.__valid_date_range = False
+                raise ValueError('Invalid date range: open date {} and close date {}'.format(self.__open_date, self.__close_date))
 
-    def __currency_value(self, value):
-        if isinstance(value, str):
-            no_currency = value.replace(self.__conv['currency_symbol'], '')
-            raw_numbers = no_currency.replace(self.__conv['thousands_sep'], '')
-            return raw_numbers
-        else:
-            return value
+    def __calculate_days_open(self):
+        days = 0
+        self.___validate_date_range()
+        if self.__valid_date_range:
+            delta = self.__close_date - self.__open_date
+            # days = delta.total_seconds() / 60 / 60 / 24
+            days = delta.days
+            self.__position_length = days + 1
+            #print('{}, {}, {}'.format(self.__open_date, self.__close_date, self.__position_length))
 
-    def __date_value(self, value):
-        if isinstance(value, str) and (value.strip() != ''):
-            format = locale.nl_langinfo(locale.D_FMT)
-            date_value = datetime.datetime.strptime(value.strip(), format).date()
-            return date_value
-        elif isinstance(value, datetime.date):
-            return value
-        else:
-            return None
 
     @property
-    def quantity(self):
-        return self.__quantity
+    def open_date(self):
+        return self.__open_date
 
-    @quantity.setter
-    def quantity(self, new_quantity):
+    @open_date.setter
+    def open_date(self, date):
+        self.__open_date = Transaction.date_value(date)
+        self.__calculate_days_open()
+
+    @property
+    def close_date(self):
+        return self.__close_date
+
+    @close_date.setter
+    def close_date(self, date):
+        self.__close_date = Transaction.date_value(date)
+        self.__calculate_days_open()
+
+    @property
+    def is_open(self):
+        return self.__is_open
+
+    @property
+    def is_valid_date_range(self):
+        return self.__valid_date_range
+
+    @property
+    def position_length(self):
+        return self.__position_length
+
+    def add_transactions(self, txns):
+        for txn in txns:
+            try:
+                self.add_transaction(txn)
+            except ValueError as e:
+                print("Fail to add transaction: {}".format(txn))
+
+    @property
+    def amount(self):
+        return self.__amount
+
+    @amount.setter
+    def amount(self, amount):
         try:
-            value = float(self.__currency_value(new_quantity))
+            value = float(Transaction.currency_value(amount))
         except ValueError as e:
-            if new_quantity == '':
-                value = 0.00
+            if amount == '':
+                value = 0.0
             else:
-                raise ValueError("Inavlid shares {}".format(new_quantity))
+                raise ValueError("Invalid amount {}".format(amount))
 
-        self.__quantity = value
+        self.__amount = value
 
-    @property
-    def shares(self):
-        value = self.quantity
-        if self.is_option:
-            value = value *  100
-        return value
 
-    @property
-    def symbol(self):
-       return self.__symbol
+    def add_transaction(self, txn):
+        if (txn is None) or (txn.underlying_symbol is None) or (txn.underlying_symbol == ''):
+            raise ValueError('Invalid transaction: {}'.format(txn))
 
-    @symbol.setter
-    def symbol(self, new_symbol):
+        if (self.underlying_symbol is None) or (self.underlying_symbol == ''):
+            self.symbol = txn.underlying_symbol
 
-        # First, ensure that we have a value provided, to avoid all the costly regular expression searching
-        if new_symbol is None:
-           self.__symbol = ''
-           self.__option_symbol = ''
-           self.__underlying_symbol = ''
-           self.__is_option = False
-
-        # .. so now that we know have a value ...
+        if (txn.underlying_symbol == self.underlying_symbol):
+            self.transactions.append(txn)
+            self.update_position()
         else:
+            if txn.is_option:
+                raise ValueError("The option {} does not match the underlying security {}".format(txn.underlying_symbol, self.underlying_symbol))
+            else:
+                raise ValueError("The transaction {} does not match the security {}".format(txn.underlying_symbol, self.underlying_symbol))
 
-            # Lets check and see if it's an option symbol, which has the following format
-            #
-            #  -SWKS180132P105.50
-            match = re.search("(?P<option_flag>\-?)(?P<symbol>[A-Z]*)(?P<exp_year>\d{2})(?P<exp_mon>\d{2})(?P<exp_day>\d{2})(?P<opt_type>[A-Z])(?P<strike_price>\d*\.?\d*)", new_symbol)
+    def update_position(self):
+        self.__reset_calculated_fields()
+        self.transactions.sort(key=lambda x: x.date)
 
-            if match:
+        open_date = self.transactions[0].date
+        close_date = self.transactions[len(self.transactions)- 1].date
 
-                self.__is_option = (match.group('option_flag') == '-')
-                self.__option_symbol = new_symbol
+        self.open_date = open_date
+        self.close_date = close_date
 
-                underlying_symbol = match.group('symbol')
-                if underlying_symbol == '':
-                    raise AttributeError('The underlying symbol was not found in the option symbol')
-                else:
-                    self.__symbol = new_symbol[1:]
-                    self.__underlying_symbol = underlying_symbol
+        for txn in self.transactions:
 
+            self.amount = self.amount + txn.amount
 
-                exp_yr = int('20' + match.group('exp_year'))
-                exp_mo = int(match.group('exp_mon'))
-                exp_day = int(match.group('exp_day'))
-                try:
-                    #exp_date = datetime.date(exp_yr, exp_mo, exp_day)
-                    str_date = '{}/{}/20{}'.format(match.group('exp_mon'), match.group('exp_day'), match.group('exp_year'))
-                    exp_date = self.__date_value(str_date)
-                except ValueError as e:
-                    raise AttributeError("Invalid expiration date: {}".format(e))
-                self.__option_expiration_date = exp_date
+            if txn.is_option:
 
-                opt_type = match.group('opt_type')
-                if (opt_type == Position.CALL) or (opt_type == Position.PUT):
-                    self.__option_type = opt_type
-                else:
-                    raise AttributeError("An option type must be a 'C' (CALL) or a 'P' (PUT)")
+                if txn.action == Transaction.BUY:
+                    self.quantity = self.quantity + txn.quantity
 
-                price = match.group('strike_price')
-                if price == '':
-                    raise AttributeError("Invalid or missing option price {}".format(price))
-                else:
-                    self.__option_strike_price = float(price)
+                elif txn.action == Transaction.SELL:
+                    self.quantity = self.quantity - txn.quantity
+                    self.__is_open = not (self.quantity == 0)
 
+                elif txn.action == Transaction.EXPIRED:
+                    self.quantity = self.quantity - txn.quantity
+                    self.__is_open = not (self.quantity == 0)
+
+                elif txn.action == Transaction.ASSIGNED:
+                    self.quantity = self.quantity - txn.quantity
+                    self.__is_open = not (self.quantity == 0)
             else:
 
-                if new_symbol[0:1] == '-':
-                    raise AttributeError('Invalid option symbol {}'.format(new_symbol))
+                if txn.action == Transaction.BUY:
+                    self.quantity = self.quantity + txn.quantity
 
-                else:
-                    self.__symbol = new_symbol
-                    self.__option_symbol = ''
-                    self.__underlying_symbol = new_symbol
-                    self.__is_option = False
+                elif txn.action == Transaction.SELL:
+                    self.quantity = self.quantity - txn.quantity
+                    self.__is_open = not (self.quantity == 0)
 
-
-    @property
-    def is_option(self):
-        return self.__is_option
-
-    @is_option.setter
-    def is_option(self, option):
-        raise ValueError("is_option flag is read only")
-
-    @property
-    def option_type(self):
-        return self.__option_type
-
-    @property
-    def option_symbol(self):
-        return self.__option_symbol
-
-    @property
-    def option_expiration_date(self):
-        return self.__option_expiration_date
-
-    @property
-    def option_strike_price(self):
-        return self.__option_strike_price
-
-    @property
-    def underlying_symbol(self):
-        return self.__underlying_symbol
 

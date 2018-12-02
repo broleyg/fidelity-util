@@ -129,7 +129,7 @@ class TestTransactions(TestAccount):
         pos = self.act.positions[test_symbol]
         self.assertFalse(pos.open)
         total = self.act.get_total_amount_for_symbol(test_symbol)
-        self.assertEquals(total, test_total)
+        self.assertEqual(total, test_total)
 
 
     def test_option_transaction(self):

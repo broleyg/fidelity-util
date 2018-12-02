@@ -116,12 +116,63 @@ class TestAction(TestTransaction):
     def test_sell_action(self):
         test_action = Transaction.SELL
         self.txn.action = test_action
-        self.assertEqual(self.txn.action, test_action)
+        self.assertEqual(self.txn.action, Transaction.SELL)
+
+    def test_sell_action(self):
+        test_action = 'sell'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.SELL)
+
+    def test_sell_action(self):
+        test_action = 'SoLd'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.SELL)
+
 
     def test_buy_action(self):
         test_action = Transaction.BUY
         self.txn.action = test_action
-        self.assertEqual(self.txn.action, test_action)
+        self.assertEqual(self.txn.action, Transaction.BUY)
+
+    def test_sell_action(self):
+        test_action = 'bouGht'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.BUY)
+
+    def test_sell_action(self):
+        test_action = 'buy'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.BUY)
+
+    def test_expired_action(self):
+        test_action = Transaction.EXPIRED
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.EXPIRED)
+
+    def test_sell_action(self):
+        test_action = 'expIred tonight'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.EXPIRED)
+
+    def test_sell_action(self):
+        test_action = 'ExpIre'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.EXPIRED)
+
+    def test_assigned_action(self):
+        test_action = Transaction.ASSIGNED
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.ASSIGNED)
+
+    def test_sell_action(self):
+        test_action = 'tonight assigned yes'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.ASSIGNED)
+
+    def test_sell_action(self):
+        test_action = 'AssIgN'
+        self.txn.action = test_action
+        self.assertEqual(self.txn.action, Transaction.ASSIGNED)
 
     def test_invalid_action(self):
         test_action = "blah"
