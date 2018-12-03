@@ -75,11 +75,10 @@ def main():
     txns = import_csv('data/2018-roth-txns.csv')
     act.add_transactions(txns)
 
-    for symbol in act.positions:
+    for symbol, position in act.positions.items():
         print()
-        print('{} transactions amounting to {}'.format(symbol, act.get_total_amount_for_symbol(symbol)))
-        txns = act.get_transactions_for_symbol(symbol)
-        for txn in txns:
+        print('{} transactions amounting to {}'.format(symbol, position.amount))
+        for txn in position.transactions:
             print('\t{0} - {1:<18} {2:,.2f} {3}'.format(txn.date, txn.symbol,  txn.amount, txn.action))
 
     return

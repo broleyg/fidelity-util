@@ -101,14 +101,17 @@ class Security:
 
             if match:
 
-                self.__is_option = (match.group('option_flag') == '-')
+                self.__is_option = True #(match.group('option_flag') == '-')
                 self.__option_symbol = new_symbol
 
                 underlying_symbol = match.group('symbol')
                 if underlying_symbol == '':
                     raise AttributeError('The underlying symbol was not found in the option symbol')
                 else:
-                    self.__symbol = new_symbol[1:]
+                    if (match.group('option_flag') == '-'):
+                        self.__symbol = new_symbol[1:]
+                    else:
+                        self.__symbol = new_symbol
                     self.__underlying_symbol = underlying_symbol
 
 

@@ -8,7 +8,8 @@ class Account:
     def __init__(self):
 
         self.id = ""
-        self.balance = 0
+        self.__initial_balance = 0
+        self.__current_balance = 0
         self.__psns = {}
         self.__txns = []
 
@@ -22,6 +23,27 @@ class Account:
                 attr = key
             rep[attr] = value
         return json.dumps(rep, indent=4, sort_keys=True, default=str)
+
+    @property
+    def initial_balance(self):
+        return self.__initial_balance
+
+    @initial_balance.setter
+    def initial_balance(self, new_quantity):
+        try:
+            value = float(Position.currency_value(new_quantity))
+        except ValueError as e:
+            if new_quantity == '':
+                value = 0.00
+            else:
+                raise ValueError("Inavlid initial balance {}".format(new_quantity))
+
+        self.__initial_balance = value
+
+    @property
+    def current_balance(self):
+        self.update_account()
+        return self.__current_balance
 
     @property
     def transactions(self):
@@ -49,36 +71,28 @@ class Account:
     def add_transaction(self, txn):
         if isinstance(txn, Transaction) and (txn.symbol != ''):
             self.transactions.append(txn)
+            self.transactions.sort(key=lambda x: x.date)
             self.add_to_position(txn)
         else:
             raise ValueError("A valid transaction must be provided")
 
-    def start_position(self, pos):
-        return
-
-    def update_position(self, txn):
-
-        return
-
     def add_to_position(self, txn):
         if isinstance(txn, Transaction):
-            if txn.symbol in self.__psns:
-                p = self.__psns[txn.underlying_symbol]
-                if txn.action == Transaction.BUY:
-                    p.quantity = p.quantity + txn.quantity
-                elif txn.action == Transaction.SELL:
-                    p.quantity = p.quantity - txn.quantity
-                    p.open = not (p.quantity == 0)
-
+            if txn.underlying_symbol in self.__psns:
+                pos = self.__psns[txn.underlying_symbol]
             else:
-                new_pos = Position()
-                new_pos.symbol = txn.symbol
-                #new_pos.description = pos.description
-                new_pos.quantity = txn.quantity
-                self.__psns[txn.underlying_symbol] = new_pos
+                pos = Position()
+                pos.symbol = txn.underlying_symbol
+                self.__psns[txn.underlying_symbol] = pos
+            pos.add_transaction(txn)
         else:
             raise ValueError("A valid position must be provided")
 
+
+    def update_account(self):
+        self.__current_balance = self.__initial_balance
+        for symbol, pos in self.positions.items():
+            self.__current_balance = self.__current_balance + pos.amount
 
     def get_transactions_for_symbol(self, symbol):
         txns  = []
