@@ -8,6 +8,8 @@ class Transaction(Security):
     SELL = 'SELL'
     EXPIRED = 'EXPRIED'
     ASSIGNED = 'ASSIGNED'
+    DIVIDEND = 'DIVIDEND'
+    REINVEST = 'REINVEST'
     NONE = 'NONE'
 
     # Step #1 for a Class - always create an __init__ method
@@ -70,10 +72,18 @@ class Transaction(Security):
             self.__action = Transaction.ASSIGNED
             return
 
+        match = re.search(r"(DIVIDEND)", new_action)
+        if match:
+            self.__action = Transaction.DIVIDEND
+            return
+
+        match = re.search(r"(REINVEST)", new_action)
+        if match:
+            self.__action = Transaction.REINVEST
+            return
 
         self.__action = new_action
         #self.__action = Transaction.NONE
-
 
     @property
     def price(self):

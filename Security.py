@@ -43,9 +43,22 @@ class Security:
             return value
 
     @staticmethod
-    def date_value(value):
+    def currency_format(value):
+        fmt = '{0}{1:,.2f}'.format(Security.__conv['currency_symbol'], value)
+        return fmt
+
+    @staticmethod
+    def date_format(value):
+        #  TODO: Fix the date format
+        local_fmt = locale.nl_langinfo(locale.D_FMT)
+        fmt = ''.format(value)
+        return fmt
+
+    @staticmethod
+    def date_value(value, format=None):
         if isinstance(value, str) and (value.strip() != ''):
-            format = locale.nl_langinfo(locale.D_FMT)
+            if format == None:
+                format = locale.nl_langinfo(locale.D_FMT)
             date_value = datetime.datetime.strptime(value.strip(), format).date()
             return date_value
         elif isinstance(value, datetime.date):

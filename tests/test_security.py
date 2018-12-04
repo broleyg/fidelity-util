@@ -1,6 +1,7 @@
 from unittest import TestCase
 from datetime import date
 from Security import Security
+import locale
 
 class TestSecurity(TestCase):
     def setUp(self):
@@ -147,5 +148,6 @@ class TestShares(TestSecurity):
         self.sec.symbol = test_symbol
         self.assertTrue(self.sec.is_option)
         self.assertEqual(self.sec.shares, test_quantity * 100)
+
 
 

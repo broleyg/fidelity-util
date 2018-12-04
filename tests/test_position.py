@@ -8,30 +8,17 @@ class TestPosition(TestCase):
     def setUp(self):
         self.pos = Position()
 
-    def new_transaction(self,test_date = None, test_symbol = 'SWKS', test_price=100.00, test_quantity=100, test_commission = 4.95, test_fees = 0):
+    def new_txn(self,test_symbol='', test_action='', test_date='', test_quantity='', test_price='', test_commission='', test_fees='', test_amount=''):
         txn = Transaction()
         txn.symbol = test_symbol
+        txn.action = test_action
         txn.quantity= test_quantity
-        txn.action = Transaction.BUY
-        txn.commission = test_quantity
+        txn.commission = test_commission
         txn.fees = test_fees
         txn.price = test_price
         txn.date = test_date
-        txn.amount = (-1 * test_price * test_quantity) - test_commission - test_fees
+        txn.amount = test_amount
         return txn
-
-    def new_buy_transaction(self, test_date = None, test_symbol = 'SWKS', test_price=100.00, test_quantity=100, test_commission = 4.95, test_fees = 0):
-        txn = self.new_transaction(test_date, test_symbol, test_price, test_quantity, test_commission, test_fees)
-        txn.action = Transaction.BUY
-        txn.amount = (-1 *test_price * test_quantity) - test_commission - test_fees
-        return txn
-
-    def new_sell_transaction(self, test_date = None, test_symbol = 'SWKS', test_price=100.00, test_quantity=100, test_commission = 4.95, test_fees = 0):
-        txn = self.new_transaction(test_date, test_symbol, test_price, test_quantity, test_commission, test_fees)
-        txn.action = Transaction.SELL
-        txn.amount = (1 *test_price * test_quantity) - test_commission - test_fees
-        return txn
-
 
 class TestInit(TestPosition):
 
@@ -194,10 +181,10 @@ class TestTransactions(TestPosition):
     def test_add_invalid_transaction(self):
 
         test_symbol = 'SWKS'
-        txn = self.new_buy_transaction(test_symbol = 'swks', test_price=95.25)
+        txn = self.new_txn(test_symbol = 'swks', test_price=95.25)
         self.pos.add_transaction(txn)
 
-        txn = self.new_sell_transaction(test_symbol = 'APPL', test_price=99.25)
+        txn = self.new_txn(test_symbol = 'APPL', test_price=99.25)
 
         try:
             self.pos.add_transaction(txn)
@@ -214,11 +201,11 @@ class TestTransactions(TestPosition):
         test_position_length = 30
         test_close_date = date.today()
         test_open_date = test_close_date - timedelta(days=test_position_length)
-        txn = self.new_buy_transaction(test_price=95.25, test_date = test_open_date)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_price=95.25, test_date = test_open_date)
         txns.append(txn)
 
         txn = Transaction()
-        txn = self.new_sell_transaction(test_price=99.25, test_date = test_close_date)
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_price=99.25, test_date = test_close_date)
         txns.append(txn)
 
         test_total = 0.0
@@ -234,3 +221,45 @@ class TestTransactions(TestPosition):
 
     def test_option_transaction(self):
         return
+
+class TestCoveredCallPosition(TestPosition):
+    def test_covered_call(self):
+        txns = []
+
+        test_symbol = 'SQ'
+        test_open_date = date(2018, 6, 25)
+        test_close_date = date(2018, 11, 22)
+        test_close_date = date.today()
+
+        test_position_length = (test_close_date - test_open_date).days + 1
+
+        #txn = self.new_txn('-SQ180817P50', Transaction.SELL, '2018-05-23', -1, 2.55, 5.60, .05, 249.35)
+        #txns.append(txn)
+        #txn = self.new_txn('-SQ180817P50', Transaction.EXPIRED, '2018-08-20', 1, 0, 0, 0, 0)
+        #txns.append(txn)
+
+        txn = self.new_txn('SQ', Transaction.BUY, '06/25/2018', 200, 63.0, 4.95, 0, -12604.95)
+        txns.append(txn)
+        txn = self.new_txn('-SQ180817C65', Transaction.SELL, '06/25/2018', -2, 3.78, 1.30, .09, 754.61)
+        txns.append(txn)
+        txn = self.new_txn('-SQ180817C65', Transaction.BUY, '08/15/2018', 2, 7.42, 1.30, .07, -1485.37)
+        txns.append(txn)
+        txn = self.new_txn('-SQ181221C70', Transaction.SELL, '08/15/2018', -2, 9.17, 6.25, .10, 1827.65)
+        txns.append(txn)
+        txn = self.new_txn('-SQ181221C70', Transaction.BUY, '11/22/2018', 2, 6.22, 6.25, 0.07, -1250.32)
+        txns.append(txn)
+        txn = self.new_txn('-SQ190118C75', Transaction.SELL, '11/22/2018', -2, 5.27, 1.30, .09, 1052.61)
+        txns.append(txn)
+
+
+        test_total = 0.0
+        for txn in txns:
+            test_total = test_total + txn.amount
+
+        #self.pos.add_transactions(txns)
+        self.pos.transactions = txns
+        self.pos.update_position()
+        self.assertEqual(self.pos.open_date, test_open_date)
+        self.assertEqual(self.pos.close_date, test_close_date)
+        self.assertEqual(self.pos.position_length, test_position_length)
+        self.assertEqual(self.pos.amount, test_total)

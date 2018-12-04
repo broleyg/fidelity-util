@@ -1,12 +1,13 @@
 import csv
-import Transaction
+from Security import Security
+from Transaction import Transaction
 
 from Account import Account
 
 def parse_row(map, web_format, row):
 
     # run date,action,symbol,security description,security type,quantity,price ($),commission ($),fees ($),accrued interest ($),amount ($),settlement date
-    txn = Transaction.Transaction()
+    txn = Transaction()
 
     txn.symbol = row[map['Symbol']].strip()
     txn.description = row[map['Security Description']].strip()
@@ -77,10 +78,12 @@ def main():
 
     for symbol, position in act.positions.items():
         print()
-        print('{} transactions amounting to {}'.format(symbol, position.amount))
+        print('{} transactions from {} to {} ({}) day(s)'.format(symbol, position.open_date, position.close_date, position.position_length))
+        print()
         for txn in position.transactions:
-            print('\t{0} - {1:<18} {2:,.2f} {3}'.format(txn.date, txn.symbol,  txn.amount, txn.action))
-
+            print('{0}  {1:<18} {2:<15} {3:>6} {4:>12} {5:>6} {6:>6} {7:>15}'.format(txn.date, txn.symbol, txn.action, txn.quantity, Security.currency_format(txn.price), Security.currency_format(txn.commission), Security.currency_format(txn.fees), Security.currency_format(txn.amount)))
+        print('{0}'.format('-'*80))
+        print('{0:62}{1:>15}'.format(' ', Security.currency_format(position.amount)))
     return
 
 if (__name__ == "__main__"):

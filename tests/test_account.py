@@ -77,3 +77,8 @@ class TestCurrentBalance(TestAccount):
         self.act.add_transaction(txn)
 
         self.assertEqual(self.act.current_balance, 90475.00)
+
+
+
+
+

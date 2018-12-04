@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import date
+from decimal import *
 
 from Security import Security
 from Transaction import Transaction
@@ -9,7 +10,8 @@ class Position(Security):
 
     def __init__(self):
         super().__init__()
-        self.transactions = []
+        self.transactions=[]
+        self.__open={}
         self.__reset_calculated_fields()
 
 
@@ -20,6 +22,7 @@ class Position(Security):
         self.__valid_date_range = False
         self.__position_length = 0
         self.__amount = 0.0
+        self.__open={}
 
     def ___validate_date_range(self):
         self.__valid_date_range = False
@@ -131,19 +134,36 @@ class Position(Security):
         open_date = self.transactions[0].date
         close_date = self.transactions[len(self.transactions)- 1].date
 
-        self.open_date = open_date
-        self.close_date = close_date
-
         for txn in self.transactions:
+
+            if txn.symbol not in self.__open:
+                self.__open[txn.symbol] = txn.quantity
+            else:
+                self.__open[txn.symbol] = self.__open[txn.symbol] + txn.quantity
+
+            if self.__open[txn.symbol] == 0:
+                del self.__open[txn.symbol]
+
 
             self.amount = self.amount + txn.amount
 
             if txn.is_option:
 
-                if txn.action == Transaction.BUY:
+                # Long Call (option to buy at strike price)
+                if txn.action == Transaction.BUY and txn.option_type == Transaction.CALL:
                     self.quantity = self.quantity + txn.quantity
 
-                elif txn.action == Transaction.SELL:
+                # Insurance/Protection (option to sell at strike price)
+                if txn.action == Transaction.BUY and txn.option_type == Transaction.PUT:
+                    self.quantity = self.quantity + txn.quantity
+
+                # Covered Call (obligation to sell at strike price)
+                elif txn.action == Transaction.SELL and txn.option_type == Transaction.CALL:
+                    self.quantity = self.quantity - txn.quantity
+                    self.__is_open = not (self.quantity == 0)
+
+                # Happy to buy at the strike  (obligation to buy at strike price)
+                elif txn.action == Transaction.SELL and txn.option_type == Transaction.CALL:
                     self.quantity = self.quantity - txn.quantity
                     self.__is_open = not (self.quantity == 0)
 
@@ -162,5 +182,12 @@ class Position(Security):
                 elif txn.action == Transaction.SELL:
                     self.quantity = self.quantity - txn.quantity
                     self.__is_open = not (self.quantity == 0)
+
+        if len(self.__open) == 0:
+            self.open_date = open_date
+            self.close_date = close_date
+        else:
+            self.open_date = open_date
+            self.close_date = date.today()
 
 
