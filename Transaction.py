@@ -6,7 +6,7 @@ class Transaction(Security):
 
     BUY = 'BUY'
     SELL = 'SELL'
-    EXPIRED = 'EXPRIED'
+    EXPIRED = 'EXPIRED'
     ASSIGNED = 'ASSIGNED'
     DIVIDEND = 'DIVIDEND'
     REINVEST = 'REINVEST'
@@ -24,6 +24,7 @@ class Transaction(Security):
         self.commission = 0.00
         self.fees = 0.00
         self.__amount = 0.00
+        self.__cash_reserved = 0.00
 
     # Handy article to show how to use private variables w getters and setters
     # https://www.python-course.eu/python3_properties.php
@@ -52,12 +53,12 @@ class Transaction(Security):
     def action(self, new_action):
         new_action = new_action.upper()
 
-        match = re.search(r"(BUY|BOUGHT)", new_action)
+        match = re.search(r"(BUY|BOUGHT|PURCHASE)", new_action)
         if match:
             self.__action = Transaction.BUY
             return
 
-        match = re.search(r"(SELL|SOLD)", new_action)
+        match = re.search(r"(SELL|SOLD|REDEMPTION)", new_action)
         if match:
             self.__action = Transaction.SELL
             return
@@ -72,7 +73,7 @@ class Transaction(Security):
             self.__action = Transaction.ASSIGNED
             return
 
-        match = re.search(r"(DIVIDEND)", new_action)
+        match = re.search(r"(DIVIDEND|CAP GAIN|IN LIEU OF)", new_action)
         if match:
             self.__action = Transaction.DIVIDEND
             return
@@ -100,11 +101,6 @@ class Transaction(Security):
                 raise ValueError("Invalid price {}".format(price))
 
         self.__price = value
-        #if value < 0:
-        #    self.__price = 0
-        #    raise ValueError("The price paid per share for a transaction must be greater than zero.")
-        #else:
-        #    self.__price = value
 
     @property
     def fees(self):
@@ -162,6 +158,13 @@ class Transaction(Security):
 
         self.__amount = value
 
+
+    @property
+    def cash_reserved(self):
+        if self.is_option:
+            if self.action == Transaction.SELL and self.option_type == Transaction.PUT:
+                return self.quantity * self.option_strike_price * 100
+        return 0.00
 
 if __name__ == "__main__":
     txn = Transaction()

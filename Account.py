@@ -1,7 +1,8 @@
-from Transaction import Transaction
-from Position import Position
 import json
 
+from Position import Position
+from Transaction import Transaction
+from Strategy import Strategy
 
 class Account:
 
@@ -10,6 +11,7 @@ class Account:
         self.id = ""
         self.__initial_balance = 0
         self.__current_balance = 0
+        self.__strategies = []
         self.__psns = {}
         self.__txns = []
 
@@ -61,12 +63,21 @@ class Account:
     def positions(self, positions):
         self.__psns = positions
 
+    @property
+    def strategies(self):
+        return self.__strategies
+
+    @strategies.setter
+    def strategies(self, strategies):
+        self.__strategies = strategies
+
+
     def add_transactions(self, txns):
         for txn in txns:
             try:
                 self.add_transaction(txn)
             except ValueError as e:
-                print("Fail to add transaction: {}".format(txn))
+                print("Fail to add transaction {}: {}".format(txn, e))
 
     def add_transaction(self, txn):
         if isinstance(txn, Transaction) and (txn.symbol != ''):
@@ -76,18 +87,18 @@ class Account:
         else:
             raise ValueError("A valid transaction must be provided")
 
+
     def add_to_position(self, txn):
         if isinstance(txn, Transaction):
-            if txn.underlying_symbol in self.__psns:
-                pos = self.__psns[txn.underlying_symbol]
+            if txn.symbol in self.__psns:
+                pos = self.__psns[txn.symbol]
             else:
                 pos = Position()
-                pos.symbol = txn.underlying_symbol
-                self.__psns[txn.underlying_symbol] = pos
+                pos.symbol = txn.symbol
+                self.__psns[txn.symbol] = pos
             pos.add_transaction(txn)
         else:
             raise ValueError("A valid position must be provided")
-
 
     def update_account(self):
         self.__current_balance = self.__initial_balance
@@ -97,7 +108,7 @@ class Account:
     def get_transactions_for_symbol(self, symbol):
         txns  = []
         for txn in self.transactions:
-            if txn.underlying_symbol == symbol:
+            if txn.symbol == symbol:
                 txns.append(txn)
         txns.sort(key=lambda x: x.date)
         return txns

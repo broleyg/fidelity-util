@@ -151,3 +151,31 @@ class TestShares(TestSecurity):
 
 
 
+class TestCurrentPrice(TestSecurity):
+    def test_bad_symbol(self):
+        test_symbol = 'asdflasdfx'
+        self.sec.symbol = test_symbol
+        try:
+            test_price = self.sec.current_quote
+            self.fail('An invalid symbol should have thrown an unkonwn symbol exception')
+        except ValueError as e:
+            self.assertTrue('Passed')
+
+    def test_equity_symbol(self):
+        test_symbol = 'AAPL210115C185'
+        self.sec.symbol = test_symbol
+        try:
+            test_price = self.sec.current_quote
+            self.assertTrue(test_price > 0)
+        except ValueError as e:
+            self.fail(e)
+
+
+    def test_equity_symbol(self):
+        test_symbol = 'AAPL'
+        self.sec.symbol = test_symbol
+        try:
+            test_price = self.sec.current_quote
+            self.assertTrue(test_price > 0)
+        except ValueError as e:
+            self.fail(e)

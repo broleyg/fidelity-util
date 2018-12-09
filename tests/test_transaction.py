@@ -182,3 +182,23 @@ class TestAction(TestTransaction):
         except ValueError as e:
             self.assertEqual(self.txn.action, Transaction.NONE)
 
+class TestCashReserve(TestTransaction):
+    def test_sold_put(self):
+        test_symbol = 'NILE160219P35'
+
+        self.txn.symbol = test_symbol
+        self.txn.action = Transaction.SELL
+        self.txn.quantity = -2
+
+        self.assertEqual(self.txn.cash_reserved, -7000)
+
+    def test_bought_call(self):
+        test_symbol = 'NILE160219P35'
+
+        self.txn.symbol = test_symbol
+        self.txn.action = Transaction.BUY
+        self.txn.quantity = 2
+
+        self.assertEqual(self.txn.cash_reserved, 0)
+
+

@@ -4,6 +4,8 @@ from datetime import timedelta
 from Position import Position
 from Transaction import Transaction
 
+from Security import Security
+
 class TestPosition(TestCase):
     def setUp(self):
         self.pos = Position()
@@ -116,20 +118,24 @@ class TestDateRange(TestPosition):
             self.assertEqual(self.pos.position_length, 0)
 
 
-class TestAmount(TestPosition):
+# class TestAmount(TestPosition):
+#
+#     def test_valid_amount(self):
+#         test_amount = 100
+#         self.pos.amount = test_amount
+#         self.assertEqual(self.pos.amount, test_amount)
+#
+#     def test_invalid_amount(self):
+#         test_amount = "lx"
+#         try:
+#             self.pos.amount = test_amount
+#             self.failIfEqual(self.pos.amount, test_amount)
+#         except ValueError as e:
+#             self.assertEqual(self.pos.amount, 0)
 
-    def test_valid_amount(self):
-        test_amount = 100
-        self.pos.amount = test_amount
-        self.assertEqual(self.pos.amount, test_amount)
-
-    def test_invalid_amount(self):
-        test_amount = "lx"
-        try:
-            self.pos.amount = test_amount
-            self.failIfEqual(self.pos.amount, test_amount)
-        except ValueError as e:
-            self.assertEqual(self.pos.amount, 0)
+class TestBasis(TestPosition):
+    def test_valid_basis(self):
+        self.fail('implement me')
 
 class TestTransactions(TestPosition):
     def test_add_transaction(self):
@@ -194,7 +200,7 @@ class TestTransactions(TestPosition):
             self.assertEqual(len(self.pos.transactions), 1)
 
 
-    def test_long_buy_sell_transactions(self):
+    def test_closed_transactions(self):
         txns = []
 
         test_symbol = 'SWKS'
@@ -213,53 +219,307 @@ class TestTransactions(TestPosition):
             test_total = test_total + txn.amount
 
         self.pos.add_transactions(txns)
+        self.pos.update()
         self.assertEqual(self.pos.open_date, test_open_date)
         self.assertEqual(self.pos.close_date, test_close_date)
         self.assertEqual(self.pos.position_length, test_position_length + 1)
         self.assertEqual(self.pos.amount, test_total)
 
 
-    def test_option_transaction(self):
-        return
+    def test_open_position(self):
+        txn = Transaction()
 
-class TestCoveredCallPosition(TestPosition):
-    def test_covered_call(self):
+        txn.symbol = "SWKS"
+        txn.quantity= 100
+
+        txn.action = Transaction.BUY
+        txn.commission = 5.95
+        txn.fees = 0.00
+        txn.price = 95.25
+        txn.amount = -9519.05
+        txn.date = "11/18/2018"
+        txn.settlement_date = "11/19/2018"
+
+        self.pos.add_transaction(txn)
+        self.pos.update()
+        current_price = Security.get_quote(txn.symbol)
+        test_amount = txn.amount + current_price * txn.quantity
+        self.assertEqual(self.pos.amount, test_amount)
+
+
+    def test_multi_sale_txn_open_position(self):
         txns = []
 
-        test_symbol = 'SQ'
-        test_open_date = date(2018, 6, 25)
-        test_close_date = date(2018, 11, 22)
-        test_close_date = date.today()
-
-        test_position_length = (test_close_date - test_open_date).days + 1
-
-        #txn = self.new_txn('-SQ180817P50', Transaction.SELL, '2018-05-23', -1, 2.55, 5.60, .05, 249.35)
-        #txns.append(txn)
-        #txn = self.new_txn('-SQ180817P50', Transaction.EXPIRED, '2018-08-20', 1, 0, 0, 0, 0)
-        #txns.append(txn)
-
-        txn = self.new_txn('SQ', Transaction.BUY, '06/25/2018', 200, 63.0, 4.95, 0, -12604.95)
-        txns.append(txn)
-        txn = self.new_txn('-SQ180817C65', Transaction.SELL, '06/25/2018', -2, 3.78, 1.30, .09, 754.61)
-        txns.append(txn)
-        txn = self.new_txn('-SQ180817C65', Transaction.BUY, '08/15/2018', 2, 7.42, 1.30, .07, -1485.37)
-        txns.append(txn)
-        txn = self.new_txn('-SQ181221C70', Transaction.SELL, '08/15/2018', -2, 9.17, 6.25, .10, 1827.65)
-        txns.append(txn)
-        txn = self.new_txn('-SQ181221C70', Transaction.BUY, '11/22/2018', 2, 6.22, 6.25, 0.07, -1250.32)
-        txns.append(txn)
-        txn = self.new_txn('-SQ190118C75', Transaction.SELL, '11/22/2018', -2, 5.27, 1.30, .09, 1052.61)
-        txns.append(txn)
-
-
         test_total = 0.0
-        for txn in txns:
-            test_total = test_total + txn.amount
+        test_symbol = 'SWKS'
+        test_current_price = 40
 
-        #self.pos.add_transactions(txns)
-        self.pos.transactions = txns
-        self.pos.update_position()
+        Security.price_list[test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-3800, test_date = test_open_date, test_quantity=100)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date = test_close_date, test_quantity=-50)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        test_realized_gain = test_total
+        test_unrealized_gain = 50 * test_current_price
+        test_total = test_total + test_unrealized_gain
+
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
         self.assertEqual(self.pos.open_date, test_open_date)
         self.assertEqual(self.pos.close_date, test_close_date)
-        self.assertEqual(self.pos.position_length, test_position_length)
+        self.assertEqual(self.pos.position_length, test_position_length + 1)
         self.assertEqual(self.pos.amount, test_total)
+        self.assertEqual(self.pos.realized_gain, test_realized_gain)
+        self.assertEqual(self.pos.unrealized_gain, test_unrealized_gain)
+
+    def test_multi_sale_txn_open_position(self):
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'SWKS190118C95'
+        test_current_price = 2.00
+
+        Security.price_list['-'+test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-380, test_date = test_open_date, test_quantity=2)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=200, test_date = test_close_date, test_quantity=-1)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        test_realized_gain = test_total
+        test_unrealized_gain = 1 * 100 * test_current_price
+        test_total = test_total + test_unrealized_gain
+
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
+        self.assertEqual(self.pos.open_date, test_open_date)
+        self.assertEqual(self.pos.close_date, test_close_date)
+        self.assertEqual(self.pos.position_length, test_position_length + 1)
+        self.assertEqual(self.pos.amount, test_total)
+        self.assertEqual(self.pos.realized_gain, test_realized_gain)
+        self.assertEqual(self.pos.unrealized_gain, test_unrealized_gain)
+
+    def test_complex_open_position(self):
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'SWKS'
+        test_current_price = 40
+
+        Security.price_list[test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-3800, test_date=test_open_date,
+                           test_quantity=100)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-50)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-40)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-1)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+
+
+        test_total = test_total + 9 * test_current_price
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
+        self.assertEqual(self.pos.open_date, test_open_date)
+        self.assertEqual(self.pos.close_date, test_close_date)
+        self.assertEqual(self.pos.position_length, test_position_length + 1)
+        self.assertEqual(self.pos.amount, test_total)
+
+    def test_complex_closed_position(self):
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'SWKS'
+        test_current_price = 40
+
+        Security.price_list[test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-3800, test_date=test_open_date, test_quantity=30)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-3800, test_date=test_open_date, test_quantity=70)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-50)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-40)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=2000, test_date=test_close_date, test_quantity=-10)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
+        self.assertEqual(self.pos.open_date, test_open_date)
+        self.assertEqual(self.pos.close_date, test_close_date)
+        self.assertEqual(self.pos.position_length, test_position_length + 1)
+        self.assertEqual(self.pos.amount, test_total)
+
+    def test_multi_close_option_position(self):
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'NILE160219P35'
+        test_current_price = 2.00
+
+        #Security.price_list['-'+test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-380, test_date = test_open_date, test_quantity=2)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=200, test_date = test_close_date, test_quantity=-1)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=200, test_date = test_close_date, test_quantity=-1)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        test_realized_gain = test_total
+        test_unrealized_gain = 0
+
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
+        self.assertEqual(self.pos.open_date, test_open_date)
+        self.assertEqual(self.pos.close_date, test_close_date)
+        self.assertEqual(self.pos.position_length, test_position_length + 1)
+        self.assertEqual(self.pos.amount, test_total)
+        self.assertEqual(self.pos.realized_gain, test_realized_gain)
+        self.assertEqual(self.pos.unrealized_gain, test_unrealized_gain)
+
+    def test_multi_invalid_option_position(self):
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'NILE160219P35'
+        test_current_price = 2.00
+
+        # Security.price_list['-'+test_symbol] = test_current_price
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-380, test_date=test_open_date,
+                           test_quantity=2)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=200, test_date=test_close_date,
+                           test_quantity=-1)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        test_realized_gain = test_total
+        test_unrealized_gain = 1 * 100 * test_current_price
+        test_total = test_total + test_unrealized_gain
+
+        try:
+            self.pos.add_transactions(txns)
+            self.pos.update()
+            self.fail('Unbalances transactions for an expired option contract should have thrown an exception')
+        except ValueError as e:
+            self.assertTrue(True)
+
+    def test_hal_fix_test(self):
+        # HAL transactions from 2015-06-26 to 2018-12-08 (1262) day(s)
+        #
+        # 2015-06-26 HAL                BUY                    115.0       $42.98  $7.95  $0.00         $-4,951.14
+        # 2015-09-23 HAL                DIVIDEND                 0.0        $0.00  $0.00  $0.00             $20.70
+        # 2015-12-24 HAL                DIVIDEND                 0.0        $0.00  $0.00  $0.00             $20.70
+        # 2016-03-23 HAL                DIVIDEND                 0.0        $0.00  $0.00  $0.00             $20.70
+        # 2016-06-22 HAL                DIVIDEND                 0.0        $0.00  $0.00  $0.00             $20.70
+        # 2016-08-17 HAL                SELL                  -115.0       $44.50  $7.95  $0.12          $5,109.43
+        # ---------------------------------------------------------------------------------------------------------
+        # $7,067.49
+        txns = []
+
+        test_total = 0.0
+        test_symbol = 'HAL'
+
+        test_position_length = 30
+        test_close_date = date.today()
+        test_open_date = test_close_date - timedelta(days=test_position_length)
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.BUY, test_amount=-4951.14, test_date='06/26/2015', test_quantity=115)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.DIVIDEND, test_amount=20.70, test_date='09/23/2015', test_quantity=0)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.DIVIDEND, test_amount=20.70, test_date='12/24/2015', test_quantity=0)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.DIVIDEND, test_amount=20.70, test_date='03/23/2016', test_quantity=0)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = self.new_txn(test_symbol, test_action=Transaction.DIVIDEND, test_amount=20.70, test_date='06/22/2016', test_quantity=0)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+        txn = Transaction()
+        txn = self.new_txn(test_symbol, test_action=Transaction.SELL, test_amount=5109.43, test_date='08/17/2016', test_quantity=-115)
+        txns.append(txn)
+        test_total = test_total + txn.amount
+
+
+        self.pos.add_transactions(txns)
+        self.pos.update()
+        self.assertTrue(test_total, self.pos.amount)
+

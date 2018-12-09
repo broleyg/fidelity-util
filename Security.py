@@ -2,14 +2,21 @@ import json
 import re
 import datetime
 import locale
+import requests
+import time
+from lxml import html
 
 class Security:
+    BASE_URL = 'https://quotes.fidelity.com/webxpress'
+    QUOTE_URL = BASE_URL + '/get_quote?QUOTE_TYPE=D&SID_VALUE_ID={}&submit=Quote'
 
     CALL = 'C'
     PUT ='P'
 
     locale.setlocale(locale.LC_ALL, '')
     __conv = locale.localeconv()
+
+    price_list = {}
 
     def __init__(self):
         self.symbol = ''
@@ -21,6 +28,7 @@ class Security:
         self.__option_symbol = ''
         self.__option_strike_price = 0.00
         self.__option_expiration_date = ''
+        self.__current_quote = 0.00
 
     def __str__(self):
         rep = {}
@@ -45,6 +53,11 @@ class Security:
     @staticmethod
     def currency_format(value):
         fmt = '{0}{1:,.2f}'.format(Security.__conv['currency_symbol'], value)
+        return fmt
+
+    @staticmethod
+    def percentage_format(value):
+        fmt = '{0:,.2f}%'.format(value)
         return fmt
 
     @staticmethod
@@ -102,6 +115,7 @@ class Security:
            self.__option_symbol = ''
            self.__underlying_symbol = ''
            self.__is_option = False
+           self.__current_quote = 0.00
 
         # .. so now that we know have a value ...
         else:
@@ -116,6 +130,7 @@ class Security:
 
                 self.__is_option = True #(match.group('option_flag') == '-')
                 self.__option_symbol = new_symbol
+                self.__current_quote = 0.00
 
                 underlying_symbol = match.group('symbol')
                 if underlying_symbol == '':
@@ -161,6 +176,7 @@ class Security:
                     self.__option_symbol = ''
                     self.__underlying_symbol = new_symbol
                     self.__is_option = False
+                    self.__current_quote = 0.00
 
 
     @property
@@ -191,3 +207,67 @@ class Security:
     def underlying_symbol(self):
         return self.__underlying_symbol
 
+    @property
+    def current_quote(self):
+        if self.__current_quote == 0:
+            quote_symbol = self.symbol
+            if self.is_option:
+                quote_symbol = '-{}'.format(quote_symbol)
+            else:
+                quote_symbol = self.symbol
+            self.__current_quote = Security.get_quote(quote_symbol)
+        return self.__current_quote
+
+    @staticmethod
+    def get_quote(symbol):
+        if symbol in Security.price_list:
+            return Security.price_list[symbol]
+
+        time.sleep(.1)
+        if symbol is None or len(symbol.strip()) == 0:
+            raise ValueError('A valid symbol must be provided')
+
+        price = 0.00
+        api_url = Security.QUOTE_URL.format(symbol)
+        try:
+            result = requests.get(api_url)
+        except Exception as e:
+            print (e)
+            raise ValueError('Unable to get pricing: {}'.format(e))
+
+        tree = html.fromstring(result.content)
+
+        notfound = tree.xpath('//b/text()')
+        if len(notfound) >= 1:
+            value = notfound[0].strip().lower()
+            position = value.find('unknown symbol')
+            if position >= 0:
+                raise ValueError('{} symbol not found'.format(symbol))
+
+        elements = tree.xpath('//td/text()')
+
+        foundLastTrade = False
+        validSymbol = False
+
+        # /html/body/table/tbody/tr/td[2]/table[2]/tbody/tr[2]/td[2]/font/b
+
+        for e in elements:
+            value = str(e).strip()
+            if value != '':
+                if foundLastTrade:
+                    price = Security.currency_value(value)
+                    foundLastTrade = False
+                else:
+                    foundLastTrade = (value == 'Last Trade [tick]') or (value == 'NAV')
+
+                if not validSymbol:
+                    validSymbol = (value == symbol)
+
+
+        try:
+            price = float(price)
+            Security.price_list[symbol] = price
+            return Security.price_list[symbol]
+
+        except ValueError as e:
+            raise ValueError("Invalid price {}".format(price))

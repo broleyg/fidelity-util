@@ -1,17 +1,16 @@
 import json
 import re
 from datetime import date
-from decimal import *
 
 from Security import Security
 from Transaction import Transaction
+
 
 class Position(Security):
 
     def __init__(self):
         super().__init__()
         self.transactions=[]
-        self.__open={}
         self.__reset_calculated_fields()
 
 
@@ -21,8 +20,11 @@ class Position(Security):
         self.__close_date = None
         self.__valid_date_range = False
         self.__position_length = 0
-        self.__amount = 0.0
-        self.__open={}
+        self.__realized_gain = 0.0
+        self.__unrealized_gain = 0.0
+        self.__open_quantity = 0.0
+        self.__basis = 0.0
+
 
     def ___validate_date_range(self):
         self.__valid_date_range = False
@@ -87,107 +89,109 @@ class Position(Security):
     def position_length(self):
         return self.__position_length
 
-    def add_transactions(self, txns):
-        for txn in txns:
-            try:
-                self.add_transaction(txn)
-            except ValueError as e:
-                print("Fail to add transaction: {}".format(txn))
-
     @property
     def amount(self):
-        return self.__amount
+        return (self.realized_gain + self.unrealized_gain)
 
-    @amount.setter
-    def amount(self, amount):
-        try:
-            value = float(Transaction.currency_value(amount))
-        except ValueError as e:
-            if amount == '':
-                value = 0.0
-            else:
-                raise ValueError("Invalid amount {}".format(amount))
+    @property
+    def realized_gain(self):
+        return self.__realized_gain
 
-        self.__amount = value
+    @property
+    def unrealized_gain(self):
+        return self.__unrealized_gain
 
+    @property
+    def basis(self):
+        return self.__basis
+
+    @property
+    def roi(self):
+        if self.basis != 0:
+            return (self.amount / self.basis * 100) * -1.0
+        else:
+            return 0.00
+
+    @property
+    def annualized_roi(self):
+        value = self.roi
+        rate = 365 / self.position_length
+        return value * rate
+
+    # @amount.setter
+    # def amount(self, amount):
+    #     try:
+    #         value = float(Transaction.currency_value(amount))
+    #     except ValueError as e:
+    #         if amount == '':
+    #             value = 0.0
+    #         else:
+    #             raise ValueError("Invalid amount {}".format(amount))
+    #
+    #     self.__realized_gain = value
 
     def add_transaction(self, txn):
-        if (txn is None) or (txn.underlying_symbol is None) or (txn.underlying_symbol == ''):
-            raise ValueError('Invalid transaction: {}'.format(txn))
+        txns = []
+        txns.append(txn)
+        self.add_transactions(txns)
 
-        if (self.underlying_symbol is None) or (self.underlying_symbol == ''):
-            self.symbol = txn.underlying_symbol
+    def add_transactions(self, txns):
+        for txn in txns:
+            if (txn is None) or (txn.symbol is None) or (txn.symbol == ''):
+                raise ValueError('Invalid transaction: {}'.format(txn))
 
-        if (txn.underlying_symbol == self.underlying_symbol):
-            self.transactions.append(txn)
-            self.update_position()
-        else:
-            if txn.is_option:
-                raise ValueError("The option {} does not match the underlying security {}".format(txn.underlying_symbol, self.underlying_symbol))
+            if (self.symbol is None) or (self.symbol == ''):
+                self.symbol = txn.symbol
+
+            if (txn.symbol == self.symbol):
+                self.transactions.append(txn)
             else:
-                raise ValueError("The transaction {} does not match the security {}".format(txn.underlying_symbol, self.underlying_symbol))
+                if txn.is_option:
+                    raise ValueError("The option {} does not match the underlying security {}".format(txn.symbol, self.symbol))
+                else:
+                    raise ValueError("The transaction {} does not match the security {}".format(txn.symbol, self.symbol))
 
-    def update_position(self):
+        #self.update()
+
+    def update(self):
         self.__reset_calculated_fields()
         self.transactions.sort(key=lambda x: x.date)
 
         open_date = self.transactions[0].date
         close_date = self.transactions[len(self.transactions)- 1].date
 
-        for txn in self.transactions:
-
-            if txn.symbol not in self.__open:
-                self.__open[txn.symbol] = txn.quantity
-            else:
-                self.__open[txn.symbol] = self.__open[txn.symbol] + txn.quantity
-
-            if self.__open[txn.symbol] == 0:
-                del self.__open[txn.symbol]
-
-
-            self.amount = self.amount + txn.amount
-
-            if txn.is_option:
-
-                # Long Call (option to buy at strike price)
-                if txn.action == Transaction.BUY and txn.option_type == Transaction.CALL:
-                    self.quantity = self.quantity + txn.quantity
-
-                # Insurance/Protection (option to sell at strike price)
-                if txn.action == Transaction.BUY and txn.option_type == Transaction.PUT:
-                    self.quantity = self.quantity + txn.quantity
-
-                # Covered Call (obligation to sell at strike price)
-                elif txn.action == Transaction.SELL and txn.option_type == Transaction.CALL:
-                    self.quantity = self.quantity - txn.quantity
-                    self.__is_open = not (self.quantity == 0)
-
-                # Happy to buy at the strike  (obligation to buy at strike price)
-                elif txn.action == Transaction.SELL and txn.option_type == Transaction.CALL:
-                    self.quantity = self.quantity - txn.quantity
-                    self.__is_open = not (self.quantity == 0)
-
-                elif txn.action == Transaction.EXPIRED:
-                    self.quantity = self.quantity - txn.quantity
-                    self.__is_open = not (self.quantity == 0)
-
-                elif txn.action == Transaction.ASSIGNED:
-                    self.quantity = self.quantity - txn.quantity
-                    self.__is_open = not (self.quantity == 0)
-            else:
-
-                if txn.action == Transaction.BUY:
-                    self.quantity = self.quantity + txn.quantity
-
-                elif txn.action == Transaction.SELL:
-                    self.quantity = self.quantity - txn.quantity
-                    self.__is_open = not (self.quantity == 0)
-
-        if len(self.__open) == 0:
-            self.open_date = open_date
-            self.close_date = close_date
+        if self.transactions[0].action == Transaction.BUY:
+            self.__basis = self.transactions[0].amount
         else:
+            self.__basis = self.transactions[0].cash_reserved
+
+        #print ('Updating positon = {}'.format(self.symbol))
+        for txn in self.transactions:
+            #print ('\t txn amount = {}, quantity = {}'.format(txn.amount, txn.quantity))
+            self.quantity = self.quantity + txn.quantity
+            self.__realized_gain = self.__realized_gain + txn.amount
+            self.__is_open = (self.quantity != 0)
+            #print ('\t position realized gains = {}, quantity = {}'.format(self.__realized_gain, self.quantity))
+
+        if self.is_open:
             self.open_date = open_date
             self.close_date = date.today()
+
+            try:
+                if self.is_option:
+                    if self.option_expiration_date >= date.today():
+                        price = self.current_quote
+                        self.__unrealized_gain = self.quantity * price * 100
+                else:
+                    price = self.current_quote
+                    self.__unrealized_gain = self.quantity * price
+
+            except Exception as e:
+                print('Unable to find quote for symbol {}'.format(self.symbol))
+                #raise ValueError('Unable to find quote for symbol {}'.format(self.symbol))
+
+        else:
+            self.open_date = open_date
+            self.close_date = close_date
 
 
