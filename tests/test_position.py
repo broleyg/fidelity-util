@@ -134,8 +134,18 @@ class TestDateRange(TestPosition):
 #             self.assertEqual(self.pos.amount, 0)
 
 class TestBasis(TestPosition):
-    def test_valid_basis(self):
-        self.fail('implement me')
+
+    def test_buy_basis(self):
+        test_symbol = 'SWKS'
+        test_action = Transaction.BUY
+        test_amount = 4000.00
+
+        txn = self.new_txn(test_symbol = test_symbol, test_amount=test_amount, test_action=test_action)
+        self.pos.add_transaction(txn)
+        self.assertEqual(self.pos.basis, test_amount)
+
+    def test_sell_put_basis(self):
+       pass
 
 class TestTransactions(TestPosition):
     def test_add_transaction(self):
@@ -459,8 +469,8 @@ class TestTransactions(TestPosition):
         txns.append(txn)
         test_total = test_total + txn.amount
 
-        txns.append(txn)
-        test_total = test_total + txn.amount
+        #txns.append(txn)
+        #test_total = test_total + txn.amount
 
         test_realized_gain = test_total
         test_unrealized_gain = 1 * 100 * test_current_price
@@ -523,3 +533,21 @@ class TestTransactions(TestPosition):
         self.pos.update()
         self.assertTrue(test_total, self.pos.amount)
 
+
+class TestValidTransaction(TestPosition):
+    def test_none(self):
+        self.assertFalse(Position.is_valid_transaction(None))
+
+    def test_no_symbol(self):
+        txn = self.new_txn('')
+        self.assertFalse(Position.is_valid_transaction(txn))
+
+    def test_valid_transaction(self):
+        test_symbol = 'AAPL'
+        txn = self.new_txn(test_symbol=test_symbol)
+        self.assertTrue(Position.is_valid_transaction(txn))
+
+    def test_valid_transaction(self):
+        test_symbol = 'NILE160219P35'
+        txn = self.new_txn(test_symbol=test_symbol)
+        self.assertTrue(Position.is_valid_transaction(txn))

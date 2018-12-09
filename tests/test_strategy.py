@@ -1,11 +1,25 @@
 from unittest import TestCase
 
 from datetime import date
+from Transaction import Transaction
 from Strategy import Strategy
 
 class TestStrategy(TestCase):
     def setUp(self):
         self.strat = Strategy()
+
+    def new_txn(self,test_symbol='', test_action='', test_date='', test_quantity='', test_price='', test_commission='', test_fees='', test_amount=''):
+        txn = Transaction()
+        txn.symbol = test_symbol
+        txn.action = test_action
+        txn.quantity= test_quantity
+        txn.commission = test_commission
+        txn.fees = test_fees
+        txn.price = test_price
+        txn.date = test_date
+        txn.amount = test_amount
+        return txn
+
 
 class TestCoveredCallStrategy(TestStrategy):
 
@@ -17,7 +31,7 @@ class TestCoveredCallStrategy(TestStrategy):
         test_close_date = date(2018, 11, 22)
         test_close_date = date.today()
 
-        test_position_length = (test_close_date - test_open_date).days + 1
+        test_stratition_length = (test_close_date - test_open_date).days + 1
 
         #txn = self.new_txn('-SQ180817P50', Transaction.SELL, '2018-05-23', -1, 2.55, 5.60, .05, 249.35)
         #txns.append(txn)
@@ -42,10 +56,11 @@ class TestCoveredCallStrategy(TestStrategy):
         for txn in txns:
             test_total = test_total + txn.amount
 
-        #self.pos.add_transactions(txns)
-        self.pos.transactions = txns
-        self.pos.update()
-        self.assertEqual(self.pos.open_date, test_open_date)
-        self.assertEqual(self.pos.close_date, test_close_date)
-        self.assertEqual(self.pos.position_length, test_position_length)
-        self.assertEqual(self.pos.amount, test_total)
+        #self.strat.add_transactions(txns)
+        self.strat.transactions = txns
+        self.strat.update()
+        self.assertEqual(self.strat.open_date, test_open_date)
+        self.assertEqual(self.strat.open_date, test_open_date)
+        self.assertEqual(self.strat.close_date, test_close_date)
+        self.assertEqual(self.strat.position_length_length, test_stratition_length)
+        self.assertEqual(self.strat.amount, test_total)

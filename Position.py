@@ -135,6 +135,22 @@ class Position(Security):
         txns.append(txn)
         self.add_transactions(txns)
 
+    @staticmethod
+    def is_valid_transaction(txn):
+        if (txn is None):
+            return False
+
+        if not isinstance(txn, Transaction):
+            return False
+
+        if (txn.symbol is None) or (txn.symbol == ''):
+            return False
+
+        if (txn.underlying_symbol is None) or (txn.underlying_symbol == ''):
+            return False
+
+        return True
+
     def add_transactions(self, txns):
         for txn in txns:
             if (txn is None) or (txn.symbol is None) or (txn.symbol == ''):
@@ -177,14 +193,17 @@ class Position(Security):
             self.open_date = open_date
             self.close_date = date.today()
 
+            if self.is_option:
+                if self.option_expiration_date < date.today():
+                    msg = 'Option {} expired on {}, unable to lookup current price for open position'.format(self.symbol, self.option_expiration_date)
+                    print(msg)
+                    raise ValueError(msg)
+
             try:
+                price = self.current_quote
+                self.__unrealized_gain = self.quantity * price
                 if self.is_option:
-                    if self.option_expiration_date >= date.today():
-                        price = self.current_quote
-                        self.__unrealized_gain = self.quantity * price * 100
-                else:
-                    price = self.current_quote
-                    self.__unrealized_gain = self.quantity * price
+                    self.__unrealized_gain = self.__unrealized_gain * 100
 
             except Exception as e:
                 print('Unable to find quote for symbol {}'.format(self.symbol))

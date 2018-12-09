@@ -11,7 +11,7 @@ class Account:
         self.id = ""
         self.__initial_balance = 0
         self.__current_balance = 0
-        self.__strategies = []
+        self.__strategies = {}
         self.__psns = {}
         self.__txns = []
 
@@ -84,6 +84,7 @@ class Account:
             self.transactions.append(txn)
             self.transactions.sort(key=lambda x: x.date)
             self.add_to_position(txn)
+            self.add_to_strategy(txn)
         else:
             raise ValueError("A valid transaction must be provided")
 
@@ -99,6 +100,16 @@ class Account:
             pos.add_transaction(txn)
         else:
             raise ValueError("A valid position must be provided")
+
+    def add_to_strategy(self, txn):
+        if isinstance(txn, Transaction):
+            if txn.underlying_symbol in self.__strategies:
+                strat = self.__strategies[txn.underlying_symbol]
+            else:
+                strat = Strategy()
+                strat.symbol = txn.symbol
+                self.__strategies[txn.underlying_symbol] = strat
+            strat.add_transaction(txn)
 
     def update_account(self):
         self.__current_balance = self.__initial_balance
