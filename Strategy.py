@@ -1,5 +1,7 @@
 import json
 
+from datetime import date
+
 from Security import Security
 from Transaction import Transaction
 from Position import Position
@@ -8,6 +10,9 @@ class Strategy(Position):
 
     def __init__(self):
         self.__positions = {}
+        self.__realized_gain = 0.00
+        self.__unrealized_gain = 0.00
+        self.__basis = 0.00
         super().__init__()
 
     # @property
@@ -39,21 +44,21 @@ class Strategy(Position):
     # def position_length(self):
     #     return self.__position_length
     #
-    # @property
-    # def amount(self):
-    #     return (self.realized_gain + self.unrealized_gain)
-    #
-    # @property
-    # def realized_gain(self):
-    #     return self.__realized_gain
-    #
-    # @property
-    # def unrealized_gain(self):
-    #     return self.__unrealized_gain
-    #
-    # @property
-    # def basis(self):
-    #     return self.__basis
+    @property
+    def amount(self):
+        return (self.realized_gain + self.unrealized_gain)
+
+    @property
+    def realized_gain(self):
+        return self.__realized_gain
+
+    @property
+    def unrealized_gain(self):
+        return self.__unrealized_gain
+
+    @property
+    def basis(self):
+        return self.__basis
     #
     # @property
     # def roi(self):
@@ -68,21 +73,34 @@ class Strategy(Position):
     #     rate = 365 / self.position_length
     #     return value * rate
 
-    def add_transaction(self, txn):
-        if (txn is None) or (txn.underlying_symbol is None) or (txn.underlying_symbol == ''):
-            raise ValueError('Invalid transaction: {}'.format(txn))
+    # def add_transaction(self, txn):
+    #     txns = []
+    #     txns.append(txn)
+    #     self.add_transactions(txns)
 
-        if (self.underlying_symbol is None) or (self.underlying_symbol == ''):
-            self.symbol = txn.underlying_symbol
+    def add_transactions(self, txns):
+        for txn in txns:
+            if Position.is_valid_transaction(txn):
 
-        if (txn.underlying_symbol == self.underlying_symbol):
-            self.transactions.append(txn)
-            self.update()
-        else:
-            if txn.is_option:
-                raise ValueError("The option {} does not match the underlying security {}".format(txn.underlying_symbol, self.underlying_symbol))
-            else:
-                raise ValueError("The transaction {} does not match the security {}".format(txn.underlying_symbol, self.underlying_symbol))
+                if (self.underlying_symbol is None) or (self.underlying_symbol == ''):
+                    self.symbol = txn.underlying_symbol
+
+                else:
+                    if txn.underlying_symbol != self.underlying_symbol:
+                        if txn.is_option:
+                            raise ValueError("The option {} does not match the underlying Strategy security {}".format(txn.underlying_symbol, self.underlying_symbol))
+                        else:
+                            raise ValueError("The transaction {} does not match the Strategy security {}".format(txn.underlying_symbol, self.underlying_symbol))
+
+                if txn.symbol in self.__positions:
+                    pos = self.__positions[txn.symbol]
+
+                else:
+                    pos = Position()
+                    self.__positions[txn.symbol] = pos
+                    pos.symbol = txn.symbol
+
+                pos.add_transaction(txn)
 
 
     # def add_position(self, pos):
@@ -105,5 +123,17 @@ class Strategy(Position):
     #             raise ValueError("The transaction {} does not match the security {}".format(pos.underlying_symbol, self.underlying_symbol))
 
     def update(self):
-        return
+        open_date = date.today()
+        close_date = date.today()
+
+        for symbol, pos in self.__positions.items():
+            pos.update()
+
+
+            self.__realized_gain = self.__realized_gain + pos.realized_gain
+            self.__unrealized_gain = self.__unrealized_gain + pos.unrealized_gain
+            self.__basis = self.__basis + pos.basis
+
+            if pos.open_date < open_date:
+                open_date = pos.open_date
 

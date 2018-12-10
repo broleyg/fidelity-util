@@ -137,7 +137,7 @@ class Position(Security):
 
     @staticmethod
     def is_valid_transaction(txn):
-        if (txn is None):
+        if txn is None:
             return False
 
         if not isinstance(txn, Transaction):
@@ -153,19 +153,20 @@ class Position(Security):
 
     def add_transactions(self, txns):
         for txn in txns:
-            if (txn is None) or (txn.symbol is None) or (txn.symbol == ''):
-                raise ValueError('Invalid transaction: {}'.format(txn))
+            if Position.is_valid_transaction(txn):
 
-            if (self.symbol is None) or (self.symbol == ''):
-                self.symbol = txn.symbol
+                if (self.symbol is None) or (self.symbol == ''):
+                    self.symbol = txn.symbol
 
-            if (txn.symbol == self.symbol):
-                self.transactions.append(txn)
-            else:
-                if txn.is_option:
-                    raise ValueError("The option {} does not match the underlying security {}".format(txn.symbol, self.symbol))
+                if txn.symbol == self.symbol:
+                    self.transactions.append(txn)
                 else:
-                    raise ValueError("The transaction {} does not match the security {}".format(txn.symbol, self.symbol))
+                    if txn.is_option:
+                        raise ValueError("The option {} does not match the underlying security {}".format(txn.symbol, self.symbol))
+                    else:
+                        raise ValueError("The transaction {} does not match the security {}".format(txn.symbol, self.symbol))
+            else:
+                raise ValueError('Invalid transaction: {}'.format(txn))
 
         #self.update()
 

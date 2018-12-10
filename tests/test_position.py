@@ -142,6 +142,7 @@ class TestBasis(TestPosition):
 
         txn = self.new_txn(test_symbol = test_symbol, test_amount=test_amount, test_action=test_action)
         self.pos.add_transaction(txn)
+        self.pos.update()
         self.assertEqual(self.pos.basis, test_amount)
 
     def test_sell_put_basis(self):
